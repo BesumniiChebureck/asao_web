@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LockOutlined, UserOutlined } from '@ant-design/icons';
-import { Form, Input, Button, message, Flex, Checkbox, Spin } from "antd";
+import { MailOutlined, SmileOutlined, UserOutlined } from '@ant-design/icons';
+import { Form, Input, Button, message, Flex, Checkbox, Spin, notification } from "antd";
 import '@ant-design/v5-patch-for-react-19';
-import { hasTokenInCookies, login, setTokenInCookies } from '../services/user-access';
+import { hasTokenInCookies, login, registration, setTokenInCookies } from '../services/user-access';
 import Link from "next/link";
 
-export default function LoginPage() {
+export default function RegistrationPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
 
@@ -29,10 +29,10 @@ export default function LoginPage() {
         );
     }
 
-    const handleLogin = (values: { email: string; password: string }) => {
+    const handleRegistration = (values: { name: string; email: string;  }) => {
         setTimeout(async () => {
             try {
-                const response = await login(values.email, values.password);
+                const response = await registration(values.name, values.email);
 
                 if (response.detail) {
                     if (Array.isArray(response.detail))
@@ -40,10 +40,14 @@ export default function LoginPage() {
                     else
                         message.error("Непредвиденная ошибка. Повторите попытку или попробуйте выполнить запрос позже. (" + response.detail + ")");
                 } else {
-                    if (!hasTokenInCookies())
-                        setTokenInCookies(response.access_token);
-                    message.success("Успешный вход!");
-                    router.replace("/dashboard");
+                    message.success("Успешная регистрация!");
+                    notification.open({
+                        message: 'На почту выслано письмо-подтверждение',
+                        description: 'На указанную при регистрации почту выслано подтверждающее письмо с паролем. Используйте его для авторизации.',
+                        icon: <SmileOutlined style={{ color: '#108ee9' }} />,
+                        duration: 0
+                      });
+                    router.replace("/auth");
                 }
             } catch (error) {
                 message.error("Непредвиденная ошибка. Повторите попытку или попробуйте выполнить запрос позже.");
@@ -54,40 +58,32 @@ export default function LoginPage() {
     return (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
             <Form
-                name="login"
+                name="registration"
                 initialValues={{ remember: true }}
                 style={{ minWidth: 260, maxWidth: 360 }}
-                onFinish={handleLogin}
+                onFinish={handleRegistration}
             >
                 <Form.Item>
-                    <h2 style={{ margin: '0 auto', width: 'fit-content' }}>АППО - Вход в систему</h2>
+                    <h2 style={{ margin: '0 auto', width: 'fit-content' }}>АППО - Регистрация</h2>
+                </Form.Item>
+                <Form.Item
+                    name="name"
+                    rules={[{ required: true, message: 'Пожалуйста, введите ваше имя!' }]}
+                >
+                    <Input prefix={<UserOutlined />} placeholder="Имя" />
                 </Form.Item>
                 <Form.Item
                     name="email"
                     rules={[{ required: true, message: 'Пожалуйста, введите вашу электронную почту!' }]}
                 >
-                    <Input prefix={<UserOutlined />} placeholder="Почта" />
-                </Form.Item>
-                <Form.Item
-                    name="password"
-                    rules={[{ required: true, message: 'Пожалуйста, введите ваш пароль!' }]}
-                    style={{ marginTop: 10, marginBottom: 5 }}
-                >
-                    <Input prefix={<LockOutlined />} type="password" placeholder="Пароль" />
-                </Form.Item>
-                <Form.Item
-                    style={{ marginTop: 5, marginBottom: 20 }}
-                >
-                    <Flex justify="space-between" align="center">
-                        <a href="">Забыли пароль?</a>
-                    </Flex>
+                    <Input prefix={<MailOutlined />} placeholder="Почта (к которой есть доступ)" />
                 </Form.Item>
                 <Form.Item style={{ marginTop: 10, marginBottom: 10 }}>
                     <Button type="primary" htmlType="submit" loading={loading} block>
-                        Войти
+                        Зарегистрироваться
                     </Button>
 
-                    <p style={{ marginTop: 10 }}>Нет аккаунта? <Link href={"/registration"}>Зарегистрироваться!</Link></p>
+                    <p style={{ marginTop: 10 }}><Link href={"/auth"}>Вернуться к авторизации</Link></p>
                 </Form.Item>
             </Form>
         </div>

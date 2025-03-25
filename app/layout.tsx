@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Layout } from "antd";
+import { Button, Layout, Popconfirm } from "antd";
 import { Menu } from "antd";
 import { Content, Footer, Header } from "antd/es/layout/layout";
 import "./globals.css";
@@ -9,6 +9,8 @@ import Paragraph from "antd/es/typography/Paragraph";
 import { usePathname, useRouter } from "next/navigation";
 import '@ant-design/v5-patch-for-react-19';
 import { useEffect, useState } from "react";
+import '../CONSTANTS';
+import { hasTokenInCookies, removeTokenFromCookies } from "./services/user-access";
 
 export default function RootLayout({
   children,
@@ -21,9 +23,7 @@ export default function RootLayout({
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
+    if (!hasTokenInCookies() && !pathname.startsWith("/registration")) {
       router.replace("/auth");
     } else {
       setIsAuthenticated(true);
@@ -31,12 +31,12 @@ export default function RootLayout({
   }, []);
 
   const logout = () => {
-    localStorage.removeItem("token");
+    removeTokenFromCookies();
     router.push("/");
   };
 
-  // Обрабатываем страницы авторизации отдельно
-  if (pathname.startsWith("/auth")) {
+  // Страница авторизации и регистрации обрабатываются отдельно, т.к. им нужно отключить Layout
+  if (pathname.startsWith("/auth") || pathname.startsWith("/registration")) {
     return (
       <html lang="en">
         <body>
@@ -56,6 +56,7 @@ export default function RootLayout({
     );
   }
 
+  // Главная страница нужна для переадресации, поэтому у неё отключен Layout
   if (pathname === "/") {
     return (
       <html lang="en">
@@ -75,7 +76,25 @@ export default function RootLayout({
     { key: "productList", label: <Link href={"/productList"}>Список товаров</Link> },
     { key: "statistics", label: <Link href={"/statistics"}>Статистика</Link> },
     { key: "forecasting", label: <Link href={"/forecasting"}>Прогнозирование</Link> },
-    { key: "logout", label: <Button type="primary" onClick={logout}>Выход из аккаунта</Button> },
+    { key: "separator", label: <p style={{ marginLeft: '90vh' }}></p> }, //Пропустить пространство TODO: сделать нормально
+    { key: "userList", label: <Link href={"/userList"}>Список пользователей</Link> },
+    {
+      key: "logout", label:
+        <Popconfirm
+          title="Выход из аккаунта"
+          description="Вы уверены, что хотите выйти из аккаунта?"
+          onConfirm={logout}
+          okText="Да"
+          cancelText="Нет"
+        >
+          <Button
+            style={{ marginTop: 15 }}
+            type="primary"
+          >
+            Выход из аккаунта
+          </Button>
+        </Popconfirm>
+    },
   ];
 
   return (

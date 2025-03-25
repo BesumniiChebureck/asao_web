@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Layout, Spin } from "antd";
+import { Space, Spin } from "antd";
 import '@ant-design/v5-patch-for-react-19';
 import { hasTokenInCookies, removeTokenFromCookies } from '../services/user-access';
+import { UserTable } from "../components/userList/userTable";
+import { getAllUsers } from "../services/users";
 
-export default function DashboardPage() {
+export default function UserListPage() {
+    const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
@@ -14,9 +17,16 @@ export default function DashboardPage() {
         // Проверка авторизации
         if (!hasTokenInCookies()) {
             router.replace("/auth");
-        } else {
-            setLoading(false);
+            return;
         }
+
+        const getUsers = async () => {
+            const users = await getAllUsers();
+            setLoading(false);
+            setUsers(users);
+        };
+
+        getUsers();
     }, [router]);
 
     if (loading) {
@@ -28,8 +38,13 @@ export default function DashboardPage() {
     }
 
     return (
-        <Layout style={{ padding: 20 }}>
-            <h1>Добро пожаловать в основное рабочее пространство!</h1>
-        </Layout>
+        <div>
+            <br />
+            <h2>Список пользователей</h2>
+
+            <UserTable
+                    users={users}
+                />
+        </div>
     );
 }
