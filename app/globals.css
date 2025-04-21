@@ -1,22 +1,13 @@
-/*
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --main-gradient: linear-gradient(90deg, #4CC7F4 0%, #44BDF4 17%, #31A4F4 45%, #127BF5 81%, #0063F6 99%);
 }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-*/
 
 html,
 body {
   max-width: 100vw;
   overflow-x: hidden !important;
   padding-right: 0% !important;
+  width: 100% !important;
 }
 
 body {
@@ -31,15 +22,74 @@ body {
   margin: 0;
 }
 
-/* a {
-  color: inherit;
+/* Глобальные стили для стрелок карусели */
+.ant-carousel .slick-prev,
+.ant-carousel .slick-next {
+    font-size: 24px;
+    color: #03030388;
+    z-index: 1;
+}
+
+.ant-carousel .slick-prev:hover,
+.ant-carousel .slick-next:hover {
+    color: #1890ff;
+}
+
+.ant-carousel .slick-prev {
+    left: -35px;
+}
+
+.ant-carousel .slick-next {
+    right: -35px;
+}
+
+.ant-carousel .slick-prev::before,
+.ant-carousel .slick-next::before {
+    display: none;
+}
+
+/* Глобальные стили для ссылок */
+/* Базовые стили для всех ссылок */
+a, .link {
+  color: #F8F9FA;
   text-decoration: none;
+  transition: all 0.3s ease;
+  padding: 2px 4px;
+  border-radius: 3px;
+  position: relative;
+}
+
+a:hover, .link:hover {
+  opacity: 0.9;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+a:active, .link:active,
+a.active, .link.active {
+  color: #E6F7FF;
+  text-decoration: underline;
 }
 
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
+a:focus-visible, .link:focus-visible {
+  outline: 2px solid #1890ff;
+  outline-offset: 2px;
+}
+
+.light-bg a, .light-bg .link {
+  color: #127BF5;
+}
+.light-bg a:hover, .light-bg .link:hover {
+  color: #0063F6;
+}
+
+/* Для тёмной темы (если ссылка на тёмном фоне) */
+/* @media (prefers-color-scheme: dark) {
+  a, .link {
+    color: #1890ff;
   }
-} 
-*/
+  a:hover, .link:hover {
+    color: #40a9ff;
+  }
+} */

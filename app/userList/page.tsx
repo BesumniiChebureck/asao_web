@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Space, Spin } from "antd";
 import '@ant-design/v5-patch-for-react-19';
 import { hasTokenInCookies, removeTokenFromCookies } from '../services/user-access';
-import { UserTable } from "../components/userList/userTable";
+import { UserTable } from "../components/userTable";
 import { getAllUsers } from "../services/users";
 
 export default function UserListPage() {

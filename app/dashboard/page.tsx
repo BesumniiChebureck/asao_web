@@ -28,7 +28,7 @@ export default function DashboardPage() {
     }
 
     return (
-        <Layout style={{ padding: 20 }}>
+        <Layout style={{ background: "var(--main-gradient)", padding: 20, color: "white" }}>
             <h1>Добро пожаловать в основное рабочее пространство!</h1>
         </Layout>
     );

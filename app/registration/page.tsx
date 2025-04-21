@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MailOutlined, SmileOutlined, UserOutlined } from '@ant-design/icons';
-import { Form, Input, Button, message, Flex, Checkbox, Spin, notification } from "antd";
+import { Form, Input, Button, message, Typography, Spin, notification, Layout, Space, Image } from "antd";
 import '@ant-design/v5-patch-for-react-19';
 import { hasTokenInCookies, login, registration, setTokenInCookies } from '../services/user-access';
 import Link from "next/link";
+
+const { Title } = Typography;
 
 export default function RegistrationPage() {
     const router = useRouter();
@@ -29,7 +31,7 @@ export default function RegistrationPage() {
         );
     }
 
-    const handleRegistration = (values: { name: string; email: string;  }) => {
+    const handleRegistration = (values: { name: string; email: string; }) => {
         setTimeout(async () => {
             try {
                 const response = await registration(values.name, values.email);
@@ -46,7 +48,7 @@ export default function RegistrationPage() {
                         description: 'На указанную при регистрации почту выслано подтверждающее письмо с паролем. Используйте его для авторизации.',
                         icon: <SmileOutlined style={{ color: '#108ee9' }} />,
                         duration: 0
-                      });
+                    });
                     router.replace("/auth");
                 }
             } catch (error) {
@@ -56,7 +58,7 @@ export default function RegistrationPage() {
     };
 
     return (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+        <Layout style={{ background: "var(--main-gradient)", display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
             <Form
                 name="registration"
                 initialValues={{ remember: true }}
@@ -64,7 +66,10 @@ export default function RegistrationPage() {
                 onFinish={handleRegistration}
             >
                 <Form.Item>
-                    <h2 style={{ margin: '0 auto', width: 'fit-content' }}>АППО - Регистрация</h2>
+                    <Space direction="vertical" align="center" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+                        <Image src='/logo.png' width={200} preview={false} alt='Логотип' />
+                        <Title level={2} style={{ margin: '0 auto', width: 'fit-content', color: "white" }}><b>Регистрация</b></Title>
+                    </Space>
                 </Form.Item>
                 <Form.Item
                     name="name"
@@ -83,9 +88,9 @@ export default function RegistrationPage() {
                         Зарегистрироваться
                     </Button>
 
-                    <p style={{ marginTop: 10 }}><Link href={"/auth"}>Вернуться к авторизации</Link></p>
+                    <p style={{ marginTop: 10, textAlign: 'center' }}><Link href={"/auth"}>Вернуться к авторизации</Link></p>
                 </Form.Item>
             </Form>
-        </div>
+        </Layout>
     );
 }

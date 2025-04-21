@@ -2,17 +2,17 @@ import ky from 'ky';
 import Cookies from 'js-cookie';
 
 // Вход в систему. Вернет json с ответом
-export const login = async (email: string, password: string) : Promise<any> => {
-    const response = await ky.post(`${globalThis.ASAO_MAIN_API_HOST}api/users/login`, {
-      json: { email, password },
-      throwHttpErrors: false, // Позволяет получить тело ответа даже при ошибке
-    });
-  
-    return response.json();
-  };
+export const login = async (email: string, password: string): Promise<any> => {
+  const response = await ky.post(`${globalThis.ASAO_MAIN_API_HOST}api/users/login`, {
+    json: { email, password },
+    throwHttpErrors: false, // Позволяет получить тело ответа даже при ошибке
+  });
+
+  return response.json();
+};
 
 // Регистрация
-export const registration = async (name: string, email: string) : Promise<any> => {
+export const registration = async (name: string, email: string): Promise<any> => {
   const response = await ky.post(`${globalThis.ASAO_MAIN_API_HOST}api/users/registration`, {
     json: { name, email },
     throwHttpErrors: false,
@@ -23,6 +23,11 @@ export const registration = async (name: string, email: string) : Promise<any> =
 
 // Если токен в куки есть - true, иначе false
 export const hasTokenInCookies = () => {
+
+  if (DEBUG_WITHOUT_AUTH_MODE) {
+    return true;
+  }
+
   const token = Cookies.get(globalThis.ASAO_ACCESS_TOKEN_NAME);
   return token !== undefined; // Если токен есть, возвращает true
 };

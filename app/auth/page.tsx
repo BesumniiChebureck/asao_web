@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
-import { Form, Input, Button, message, Flex, Checkbox, Spin } from "antd";
+import { Form, Input, Button, message, Flex, Typography, Spin, Layout, Space, Image } from "antd";
 import '@ant-design/v5-patch-for-react-19';
 import { hasTokenInCookies, login, setTokenInCookies } from '../services/user-access';
 import Link from "next/link";
+
+const { Title } = Typography;
 
 export default function LoginPage() {
     const router = useRouter();
@@ -31,6 +33,13 @@ export default function LoginPage() {
 
     const handleLogin = (values: { email: string; password: string }) => {
         setTimeout(async () => {
+
+            if (DEBUG_WITHOUT_AUTH_MODE) {
+                message.success("Успешный вход!");
+                router.replace("/dashboard");
+                return;
+            }
+
             try {
                 const response = await login(values.email, values.password);
 
@@ -52,7 +61,7 @@ export default function LoginPage() {
     };
 
     return (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+        <Layout style={{ background: "var(--main-gradient)", display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
             <Form
                 name="login"
                 initialValues={{ remember: true }}
@@ -60,11 +69,14 @@ export default function LoginPage() {
                 onFinish={handleLogin}
             >
                 <Form.Item>
-                    <h2 style={{ margin: '0 auto', width: 'fit-content' }}>АППО - Вход в систему</h2>
+                    <Space direction="vertical" align="center" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+                        <Image src='/logo.png' width={200} preview={false} alt='Логотип' />
+                        <Title level={2} style={{ margin: '0 auto', width: 'fit-content', color: "white" }}><b>Вход</b></Title>
+                    </Space>
                 </Form.Item>
                 <Form.Item
                     name="email"
-                    rules={[{ required: true, message: 'Пожалуйста, введите вашу электронную почту!' }]}
+                    rules={[{ required: true, message: 'Пожалуйста, введите вашу почту!' }]}
                 >
                     <Input prefix={<UserOutlined />} placeholder="Почта" />
                 </Form.Item>
@@ -76,20 +88,25 @@ export default function LoginPage() {
                     <Input prefix={<LockOutlined />} type="password" placeholder="Пароль" />
                 </Form.Item>
                 <Form.Item
-                    style={{ marginTop: 5, marginBottom: 20 }}
+                    style={{ marginTop: 5, marginBottom: 15 }}
                 >
                     <Flex justify="space-between" align="center">
-                        <a href="">Забыли пароль?</a>
+                        <Link href="">Восстановить пароль</Link>
                     </Flex>
                 </Form.Item>
                 <Form.Item style={{ marginTop: 10, marginBottom: 10 }}>
                     <Button type="primary" htmlType="submit" loading={loading} block>
                         Войти
                     </Button>
-
-                    <p style={{ marginTop: 10 }}>Нет аккаунта? <Link href={"/registration"}>Зарегистрироваться!</Link></p>
+                </Form.Item>
+                <Form.Item
+                    style={{ marginTop: 20, marginBottom: 10 }}
+                >
+                    <Button type="default" href="/registration" block>
+                        Зарегистрироваться
+                    </Button>
                 </Form.Item>
             </Form>
-        </div>
+        </Layout>
     );
 }
