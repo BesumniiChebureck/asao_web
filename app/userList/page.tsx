@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Space, Spin } from "antd";
+import { Layout, Space, Spin } from "antd";
 import '@ant-design/v5-patch-for-react-19';
 import { hasTokenInCookies, removeTokenFromCookies } from '../services/user-access';
 import { UserTable } from "../components/userTable";
@@ -38,13 +38,13 @@ export default function UserListPage() {
     }
 
     return (
-        <div>
+        <Layout style={{background: "var(--main-gradient)"}}>
             <br />
             <h2>Список пользователей</h2>
 
             <UserTable
                     users={users}
                 />
-        </div>
+        </Layout>
     );
 }
