@@ -24,7 +24,7 @@ export const registration = async (name: string, email: string): Promise<any> =>
 // Если токен в куки есть - true, иначе false
 export const hasTokenInCookies = () => {
 
-  if (DEBUG_WITHOUT_AUTH_MODE) {
+  if (DEBUG_MODE_WITHOUT_AUTH) {
     return true;
   }
 

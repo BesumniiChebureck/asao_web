@@ -4,6 +4,8 @@
 
 html,
 body {
+  background: var(--main-gradient);
+  background-attachment: fixed; /* Это важно для градиентного background! */
   max-width: 100vw;
   overflow-x: hidden !important;
   padding-right: 0% !important;
@@ -93,3 +95,19 @@ a:focus-visible, .link:focus-visible {
     color: #40a9ff;
   }
 } */
+
+/*Ссылки в таблице*/
+.tableLink {
+  color: #127BF5 !important;
+  text-decoration: none !important;
+  transition: all 0.3s ease !important;
+  padding: 2px 4px !important;
+  border-radius: 3px !important;
+  position: relative !important;
+}
+
+.tableLink:hover {
+  color: #0063F6 !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
+}

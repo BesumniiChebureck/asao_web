@@ -58,7 +58,7 @@ export default function RegistrationPage() {
     };
 
     return (
-        <Layout style={{ background: "var(--main-gradient)", display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+        <Layout style={{ background: "transparent", display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
             <Form
                 name="registration"
                 initialValues={{ remember: true }}

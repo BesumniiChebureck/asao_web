@@ -6,13 +6,13 @@ import { withAuth } from "../hocs/withAuth";
 
 const { Title } = Typography;
 
-function DashboardPage() {
+function ForecastingPage() {
     return (
         <Layout style={{ background: "transparent", padding: 20, color: "white" }}>
-            <Title level={3} style={{ color: "white", textAlign: "center" }}><b>Рабочее пространство</b></Title>
+            <Title level={3} style={{ color: "white", textAlign: "center" }}><b>Прогнозирование</b></Title>
             <br />
         </Layout>
     );
 }
 
-export default withAuth(DashboardPage);
+export default withAuth(ForecastingPage);

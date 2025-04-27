@@ -1,50 +1,55 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Layout, Space, Spin } from "antd";
+import { Layout, message, Spin, Typography } from "antd";
 import '@ant-design/v5-patch-for-react-19';
-import { hasTokenInCookies, removeTokenFromCookies } from '../services/user-access';
 import { UserTable } from "../components/userTable";
 import { getAllUsers } from "../services/users";
+import { withAuth } from "../hocs/withAuth";
 
-export default function UserListPage() {
+const { Title } = Typography;
+
+function UserListPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
-    const router = useRouter();
 
     useEffect(() => {
-        // Проверка авторизации
-        if (!hasTokenInCookies()) {
-            router.replace("/auth");
-            return;
-        }
-
         const getUsers = async () => {
-            const users = await getAllUsers();
-            setLoading(false);
-            setUsers(users);
+            try {
+                const users = await getAllUsers();
+                setUsers(users);
+            } catch (error) {
+                message.error(
+                    error instanceof Error 
+                      ? error.message 
+                      : 'Ошибка при загрузке пользователей'
+                  );
+            } finally {
+                setLoading(false);
+            }
         };
 
         getUsers();
-    }, [router]);
+    }, []);
 
     if (loading) {
         return (
             <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
-                <Spin size="large" style={{ display: "flex", justifyContent: "center", marginTop: 50 }} />
+                <Spin size="large" />
             </div>
         );
     }
 
     return (
-        <Layout style={{background: "var(--main-gradient)"}}>
+        <Layout style={{ background: "transparent" }}>
+            <Title level={3} style={{ color: "white", textAlign: "center" }}><b>Список пользователей</b></Title>
             <br />
-            <h2>Список пользователей</h2>
 
             <UserTable
-                    users={users}
-                />
+                users={users}
+            />
         </Layout>
     );
 }
+
+export default withAuth(UserListPage);

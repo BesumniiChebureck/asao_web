@@ -1,7 +1,7 @@
 "use client";
 
-import { Button, Layout, Popconfirm, Image, ConfigProvider } from "antd";
-import { Menu, MenuProps } from "antd";
+import '../CONSTANTS'; // Обеспечивает инициализацию значения констант
+import { Button, Layout, Popconfirm, Image, ConfigProvider, Menu, MenuProps, Typography, Space, Spin } from "antd";
 import { Content, Footer, Header } from "antd/es/layout/layout";
 import "./globals.css";
 import Link from "next/link";
@@ -10,9 +10,12 @@ import { usePathname, useRouter } from "next/navigation";
 import '@ant-design/v5-patch-for-react-19';
 import { useEffect, useState } from "react";
 import { CaretDownOutlined, SettingOutlined, LineChartOutlined, HomeOutlined, InsertRowAboveOutlined, BarChartOutlined } from '@ant-design/icons';
-import '../CONSTANTS';
 import { hasTokenInCookies, removeTokenFromCookies } from "./services/user-access";
+import ruRU from 'antd/locale/ru_RU';
+import dayjs from 'dayjs';
+import 'dayjs/locale/ru';
 
+const { Text } = Typography;
 
 <ConfigProvider
   theme={{
@@ -37,17 +40,35 @@ export default function RootLayout({
   const router = useRouter();
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [authDate, setAuthDate] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
 
   useEffect(() => {
     if (!hasTokenInCookies() && !pathname.startsWith("/registration")) {
       router.replace("/auth");
     } else {
       setIsAuthenticated(true);
+
+      // Получаем время авторизации и имя пользователя из cookies или состояния
+      const authDateFromCookies = localStorage.getItem('authDate');
+      const userNameFromCookies = localStorage.getItem('userName');
+
+      setAuthDate(authDateFromCookies || '');
+      setUserName(userNameFromCookies || '');
     }
+  }, []);
+
+  useEffect(() => {
+    dayjs.locale('ru');
   }, []);
 
   const logout = () => {
     removeTokenFromCookies();
+    // Очистка данных авторизации при выходе
+    localStorage.removeItem('authDate');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('sellerId');
+
     router.push("/");
   };
 
@@ -56,11 +77,13 @@ export default function RootLayout({
     return (
       <html lang="en">
         <body>
-          <Layout style={{ minHeight: "100vh", background: "var(--main-gradient)" }}>
-            <Content style={{ padding: "0 48px", background: "var(--main-gradient)" }}>
-              {children}
+          <Layout style={{ minHeight: "100vh", background: "transparent" }}>
+            <Content style={{ padding: "0 48px", background: "transparent" }}>
+              <ConfigProvider locale={ruRU}>
+                {children}
+              </ConfigProvider>
             </Content>
-            <Footer style={{ textAlign: "center", background: "var(--main-gradient)" }}>
+            <Footer style={{ textAlign: "center", background: "transparent" }}>
               <Paragraph style={{ color: "white" }}>
                 © Автоматизированный помощник продавца Ozon {(new Date).getFullYear()} <br />
                 <b>AmiSolutions</b>
@@ -76,16 +99,41 @@ export default function RootLayout({
   if (pathname === "/") {
     return (
       <html lang="en">
-        <body style={{ background: "var(--main-gradient)" }}>
-          {children}
+        <body style={{ background: "transparent" }}>
+          <ConfigProvider locale={ruRU}>
+            {children}
+          </ConfigProvider>
         </body>
       </html>
     );
   }
 
+  // Если пользователь не авторизован его перенаправит на авторизацию
   if (!isAuthenticated) {
-    return null;
+    return (
+      <html lang="en">
+        <body style={{ background: "transparent" }}>
+          <ConfigProvider locale={ruRU}>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+              <Spin size="large" style={{ display: "flex", justifyContent: "center", marginTop: 50 }} />
+            </div>
+          </ConfigProvider>
+        </body>
+      </html>
+    );
   }
+
+  const adminItems = globalThis.DEBUG_MODE ? [
+    {
+      key: 'adminPanel',
+      label: <Link href={"/adminPanel"}>Административная панель</Link>,
+      icon: <SettingOutlined />
+    },
+    {
+      key: "userList",
+      label: <Link href={"/userList"}>Список пользователей</Link>
+    },
+  ] : [];
 
   const items: MenuItem[] = [
     {
@@ -117,15 +165,7 @@ export default function RootLayout({
       label: 'Дополнительно',
       icon: <CaretDownOutlined />,
       children: [
-        {
-          key: 'adminPanel',
-          label: <Link href={"/adminPanel"}>Административная панель</Link>,
-          icon: <SettingOutlined />
-        },
-        {
-          key: "userList",
-          label: <Link href={"/userList"}>Список пользователей</Link>
-        },
+        ...adminItems,
         {
           key: "logout", label:
             <Popconfirm
@@ -147,10 +187,10 @@ export default function RootLayout({
   ];
 
   return (
-    <html lang="en">
+    <html lang="ru">
       <body>
-        <Layout style={{ minHeight: "100vh", background: "var(--main-gradient)" }}>
-          <Header style={{ background: "var(--main-gradient)" }}>
+        <Layout style={{ minHeight: "100vh", background: "transparent" }}>
+          <Header style={{ background: "transparent" }}>
             <Menu
               theme="dark"
               mode="horizontal"
@@ -158,17 +198,46 @@ export default function RootLayout({
               style={{
                 flex: 1,
                 minWidth: 0,
-                background: "var(--main-gradient)",
+                background: "transparent",
               }}
             />
           </Header>
-          <Content style={{ padding: "0 48px", background: "var(--main-gradient)" }}>
-            {children}
+          <Content style={{ padding: "0 48px", background: "transparent" }}>
+            <ConfigProvider locale={ruRU}>
+              {children}
+            </ConfigProvider>
           </Content>
-          <Footer style={{ textAlign: "center", background: "var(--main-gradient)" }}>
-            <Paragraph style={{ color: "white" }}>
+          <Footer style={{
+            position: 'relative',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            background: "transparent",
+            minHeight: '64px'
+          }}>
+            <Paragraph style={{
+              color: "white",
+              margin: 0,
+              textAlign: 'center',
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: '50%',
+              transform: 'translateY(-50%)'
+            }}>
               © Автоматизированный помощник продавца Ozon {(new Date).getFullYear()} <br />
               <b>AmiSolutions</b>
+            </Paragraph>
+
+            <Paragraph style={{
+              color: "white",
+              margin: 0,
+              textAlign: 'right',
+              position: 'relative',
+              zIndex: 1
+            }}>
+              <b>{userName}</b> <br />
+              {authDate}
             </Paragraph>
           </Footer>
         </Layout>

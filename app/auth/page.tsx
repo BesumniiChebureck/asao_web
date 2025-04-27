@@ -13,15 +13,28 @@ const { Title } = Typography;
 export default function LoginPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
+    const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
     useEffect(() => {
-        // Проверка авторизации
-        if (hasTokenInCookies()) {
-            router.replace("/dashboard");
-        } else {
-            setLoading(false);
-        }
-    }, [router]);
+        const checkAuth = () => {
+            if (hasTokenInCookies()) {
+                router.replace("/dashboard");
+            } else {
+                setLoading(false);
+                setIsCheckingAuth(false);
+            }
+        };
+
+        checkAuth();
+    }, []);
+
+    if (isCheckingAuth) {
+        return (
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+                <Spin size="large" style={{ display: "flex", justifyContent: "center", marginTop: 50 }} />
+            </div>
+        );
+    }
 
     if (loading) {
         return (
@@ -34,7 +47,10 @@ export default function LoginPage() {
     const handleLogin = (values: { email: string; password: string }) => {
         setTimeout(async () => {
 
-            if (DEBUG_WITHOUT_AUTH_MODE) {
+            if (DEBUG_MODE_WITHOUT_AUTH) {
+                localStorage.setItem('userName', "Симбат");
+                localStorage.setItem('authDate', new Date().toLocaleDateString());
+
                 message.success("Успешный вход!");
                 router.replace("/dashboard");
                 return;
@@ -51,6 +67,18 @@ export default function LoginPage() {
                 } else {
                     if (!hasTokenInCookies())
                         setTokenInCookies(response.access_token);
+
+                    // Сохраняем идентификатор продавца
+                    if (response.seller_id) {
+                        localStorage.setItem('sellerId', response.seller_id);
+                    }
+
+                    // Сохраняем имя пользователя и дату авторизации в localStorage
+                    if (response.user_name) {
+                        localStorage.setItem('userName', response.user_name);
+                        localStorage.setItem('authDate', new Date().toLocaleDateString());
+                    }
+
                     message.success("Успешный вход!");
                     router.replace("/dashboard");
                 }
@@ -61,7 +89,7 @@ export default function LoginPage() {
     };
 
     return (
-        <Layout style={{ background: "var(--main-gradient)", display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+        <Layout style={{ background: "transparent", display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
             <Form
                 name="login"
                 initialValues={{ remember: true }}
