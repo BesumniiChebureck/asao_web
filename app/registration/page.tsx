@@ -17,7 +17,7 @@ export default function RegistrationPage() {
     useEffect(() => {
         // Проверка авторизации
         if (hasTokenInCookies()) {
-            router.replace("/dashboard");
+            router.replace("/productList");
         } else {
             setLoading(false);
         }

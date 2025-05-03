@@ -11,8 +11,6 @@ export const useAuthCheck = () => {
 
     useEffect(() => {
         const tokenExists = hasTokenInCookies();
-
-        console.log(tokenExists);
         
         if (!tokenExists) {
             router.replace("/auth");

@@ -11,6 +11,8 @@ function DashboardPage() {
         <Layout style={{ background: "transparent", padding: 20, color: "white" }}>
             <Title level={3} style={{ color: "white", textAlign: "center" }}><b>Рабочее пространство</b></Title>
             <br />
+            <br />
+            <Title level={2} style={{ color: "white", textAlign: "center" }}><b>Выберите раздел меню</b></Title>
         </Layout>
     );
 }

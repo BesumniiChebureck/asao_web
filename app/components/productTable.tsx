@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Button, Flex, Input, Layout, Space, Table, TableColumnsType, Slider, Dropdown, Typography, Modal, message, Divider } from "antd";
-import { DownloadOutlined } from '@ant-design/icons';
+import { Button, Flex, Input, Layout, Space, Table, TableColumnsType, Slider, Dropdown, Typography, Modal, message, Divider, MenuProps } from "antd";
+import { DownloadOutlined, DownOutlined, SettingOutlined, LineChartOutlined, BarChartOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import '@ant-design/v5-patch-for-react-19';
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface Props {
     products: Product[];
@@ -15,6 +16,8 @@ const { Search } = Input;
 const { Text } = Typography;
 
 export const ProductTable = ({ products = [] }: Props) => {
+    const router = useRouter();
+
     // Вычисляем диапазоны значений из данных
     const calculateRanges = (data: Product[]) => {
         const prices = data.flatMap(item => [item.discount_price, item.base_price]);
@@ -242,6 +245,48 @@ export const ProductTable = ({ products = [] }: Props) => {
         );
     };
 
+    const handleOpenStrategy = (product: Product) => {
+        // Открываем страницу стратегии с передачей продукта
+        console.log("дошли до роутера");
+        router.push(`/strategy?productId=${product.id}`);
+    };
+
+    const handleOpenStatistics = (product: Product) => {
+        // Открываем страницу статистики с передачей продукта
+        router.push(`/statistics?productId=${product.id}`);
+    };
+
+    const handleOpenForecast = (product: Product) => {
+        // Открываем страницу прогноза с передачей продукта
+        router.push(`/forecast?productId=${product.id}`);
+    };
+
+    type MenuItem = Required<MenuProps>['items'][number] & {
+        key: string;
+        label: React.ReactNode;
+        icon?: React.ReactNode;
+        onClick?: (e: { domEvent: React.MouseEvent }) => void;
+    };
+
+    const baseItems: (MenuItem | { type: 'divider' })[] = [
+        {
+            key: 'statistics',
+            label: 'Статистика',
+            icon: <BarChartOutlined />,
+        },
+        {
+            key: 'forecasting',
+            label: 'Прогноз',
+            icon: <LineChartOutlined />,
+        },
+        { type: 'divider' },
+        {
+            key: 'strategy',
+            label: 'Стратегия авторегулирования цен',
+            icon: <SettingOutlined />,
+        },
+    ];
+
     const columns: TableColumnsType<Product> = [
         {
             title: 'ID',
@@ -315,33 +360,60 @@ export const ProductTable = ({ products = [] }: Props) => {
             title: 'Действия',
             key: 'actions',
             width: '10%',
-            render: (_, record) => (
-                <Space>
-                    <Button
-                        type="primary"
-                        onClick={() => handleViewStats(record.id)}
+            render: (_, record: Product) => {
+                const menuItems: MenuProps['items'] = [
+                    {
+                        key: 'statistics',
+                        label: 'Статистика',
+                        icon: <BarChartOutlined />,
+                        onClick: (e) => {
+                            e.domEvent.stopPropagation();
+                            handleOpenStatistics(record);
+                        }
+                    },
+                    {
+                        key: 'forecasting',
+                        label: 'Прогноз',
+                        icon: <LineChartOutlined />,
+                        onClick: (e) => {
+                            e.domEvent.stopPropagation();
+                            handleOpenForecast(record);
+                        }
+                    },
+                    { type: 'divider' },
+                    {
+                        key: 'strategy',
+                        label: 'Стратегия авторегулирования цен',
+                        icon: <SettingOutlined />,
+                        onClick: (e) => {
+                            e.domEvent.stopPropagation();
+                            handleOpenStrategy(record);
+                        }
+                    }
+                ];
+
+                return (
+                    <Dropdown
+                        menu={{ items: menuItems }}
+                        trigger={['click']}
                     >
-                        Статистика
-                    </Button>
-                    <Button
-                        type="default"
-                        onClick={() => handleGetForecast(record.id)}
-                    >
-                        Прогноз
-                    </Button>
-                </Space>
-            )
+                        <Button>
+                            Действия <DownOutlined />
+                        </Button>
+                    </Dropdown>
+                );
+            }
         }
     ];
 
-    const isValidUrl = (url: string) => {
+    const isValidUrl = (url: string): boolean => {
         try {
-          new URL(url);
-          return true;
+            new URL(url);
+            return true;
         } catch {
-          return false;
+            return false;
         }
-      };
+    };
 
     return (
         <Layout style={{ background: "transparent" }}>

@@ -9,7 +9,7 @@ import Paragraph from "antd/es/typography/Paragraph";
 import { usePathname, useRouter } from "next/navigation";
 import '@ant-design/v5-patch-for-react-19';
 import { useEffect, useState } from "react";
-import { CaretDownOutlined, SettingOutlined, LineChartOutlined, HomeOutlined, InsertRowAboveOutlined, BarChartOutlined } from '@ant-design/icons';
+import { CaretDownOutlined, SettingOutlined, LineChartOutlined, HomeOutlined, InsertRowAboveOutlined, BarChartOutlined, SlidersOutlined } from '@ant-design/icons';
 import { hasTokenInCookies, removeTokenFromCookies } from "./services/user-access";
 import ruRU from 'antd/locale/ru_RU';
 import dayjs from 'dayjs';
@@ -140,11 +140,11 @@ export default function RootLayout({
       key: 'main',
       label: <Link href={"/"}><Image src='/logo.png' width={200} preview={false} alt='Логотип' /></Link>,
     },
-    {
-      key: "dashboard",
-      label: <Link href={"/dashboard"}>Рабочее пространство</Link>,
-      icon: <HomeOutlined />
-    },
+    // {
+    //   key: "dashboard",
+    //   label: <Link href={"/dashboard"}>Рабочее пространство</Link>,
+    //   icon: <HomeOutlined />
+    // },
     {
       key: "productList",
       label: <Link href={"/productList"}>Список товаров</Link>,
@@ -159,6 +159,11 @@ export default function RootLayout({
       key: "forecasting",
       label: <Link href={"/forecasting"}>Прогнозирование</Link>,
       icon: <LineChartOutlined />
+    },
+    {
+      key: "strategy",
+      label: <Link href={"/strategy"}>Стратегия авторегулирования цен</Link>,
+      icon: <SlidersOutlined />
     },
     {
       key: 'subMenu',

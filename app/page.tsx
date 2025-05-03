@@ -13,7 +13,7 @@ export default function Home() {
       if (!hasTokenInCookies()) {
         router.push("/auth");
       } else {
-        router.push("/dashboard");
+        router.push("/productList");
       }
     }
   }, [router]);

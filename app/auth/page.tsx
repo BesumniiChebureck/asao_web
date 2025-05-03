@@ -18,7 +18,7 @@ export default function LoginPage() {
     useEffect(() => {
         const checkAuth = () => {
             if (hasTokenInCookies()) {
-                router.replace("/dashboard");
+                router.replace("/productList");
             } else {
                 setLoading(false);
                 setIsCheckingAuth(false);
@@ -50,9 +50,10 @@ export default function LoginPage() {
             if (DEBUG_MODE_WITHOUT_AUTH) {
                 localStorage.setItem('userName', "Симбат");
                 localStorage.setItem('authDate', new Date().toLocaleDateString());
+                localStorage.setItem('sellerId', "1");
 
                 message.success("Успешный вход!");
-                router.replace("/dashboard");
+                router.replace("/productList");
                 return;
             }
 
@@ -80,7 +81,7 @@ export default function LoginPage() {
                     }
 
                     message.success("Успешный вход!");
-                    router.replace("/dashboard");
+                    router.replace("/productList");
                 }
             } catch (error) {
                 message.error("Непредвиденная ошибка. Повторите попытку или попробуйте выполнить запрос позже.");
