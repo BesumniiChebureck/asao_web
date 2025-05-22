@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Button, Flex, Input, Layout, Space, Table, TableColumnsType, Slider, Dropdown, Typography, Modal, message, Divider, MenuProps } from "antd";
-import { DownloadOutlined, DownOutlined, SettingOutlined, LineChartOutlined, BarChartOutlined } from '@ant-design/icons';
+import { DownloadOutlined, DownOutlined, SettingOutlined, LineChartOutlined, BarChartOutlined, DeleteOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import '@ant-design/v5-patch-for-react-19';
 import Link from "next/link";
@@ -245,9 +245,13 @@ export const ProductTable = ({ products = [] }: Props) => {
         );
     };
 
+
+    const handleOpenDelMsg = (product: Product) => {
+        alert(`Функционал в разработке.`);
+    };
+
     const handleOpenStrategy = (product: Product) => {
         // Открываем страницу стратегии с передачей продукта
-        console.log("дошли до роутера");
         router.push(`/strategy?productId=${product.id}`);
     };
 
@@ -284,6 +288,12 @@ export const ProductTable = ({ products = [] }: Props) => {
             key: 'strategy',
             label: 'Стратегия авторегулирования цен',
             icon: <SettingOutlined />,
+        },
+        { type: 'divider' },
+        {
+            key: 'delete',
+            label: 'Удалить товар',
+            icon: <DeleteOutlined />,
         },
     ];
 
@@ -388,6 +398,16 @@ export const ProductTable = ({ products = [] }: Props) => {
                         onClick: (e) => {
                             e.domEvent.stopPropagation();
                             handleOpenStrategy(record);
+                        }
+                    },
+                    { type: 'divider' },
+                    {
+                        key: 'delete',
+                        label: 'Удалить товар',
+                        icon: <DeleteOutlined />,
+                        onClick: (e) => {
+                            e.domEvent.stopPropagation();
+                            handleOpenDelMsg(record);
                         }
                     }
                 ];
