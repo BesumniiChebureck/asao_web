@@ -321,10 +321,10 @@ export const PriceChart: React.FC<PriceChartProps> = ({ sellerId, startDate, end
                 yanchor: 'top'
             },
             margin: {
-                t: 100,
+                t: 80,
                 l: 80,
-                r: 80,
-                b: 80,
+                r: 40,
+                b: 120, 
                 pad: 10
             },
             yaxis: {
@@ -347,7 +347,7 @@ export const PriceChart: React.FC<PriceChartProps> = ({ sellerId, startDate, end
                 hoverformat: '%d.%m.%Y %H:%M',
                 title: {
                     text: 'Дата и время сбора данных',
-                    standoff: 20,
+                    standoff: 25,
                     font: {
                         size: 14
                     }
@@ -366,8 +366,8 @@ export const PriceChart: React.FC<PriceChartProps> = ({ sellerId, startDate, end
             },
             legend: {
                 orientation: 'h',
-                yanchor: 'bottom',
-                y: -0.35,  // перемещаем легенду под график
+                yanchor: 'top',
+                y: -0.4,
                 xanchor: 'center',
                 x: 0.5,
                 font: {
