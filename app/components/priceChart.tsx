@@ -417,6 +417,7 @@ export const PriceChart: React.FC<PriceChartProps> = ({ sellerId, startDate, end
                     ]}
                 />
             </Space>
+            <br />
 
             <Plot
                 data={getVisibleTraces()}
