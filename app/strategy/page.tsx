@@ -9,34 +9,34 @@ import { useSearchParams } from 'next/navigation';
 const { Title, Text } = Typography;
 
 interface Product {
-  id: number;
-  name: string;
-  link: string;
-  discount_price: number;
-  base_price: number;
-  star_count: number;
-  review_count: number;
-  children?: Product[];
-  sellerId?: number;
-  currentStrategy?: Strategy;
+    id: number;
+    name: string;
+    link: string;
+    discount_price: number;
+    base_price: number;
+    star_count: number;
+    review_count: number;
+    children?: Product[];
+    sellerId?: number;
+    currentStrategy?: Strategy;
 }
 
 interface Strategy {
-  id: number;
-  name: string;
-  isDefault: boolean;
-  sellerId: number;
-  reprisingMethod: string;
-  notifications: boolean;
-  createdAt: string;
-  updatedAt: string;
-  productId?: number;
-  fixedPrice?: number;
-  competitorOffset?: number;
-  percentValue?: number;
-  percentDirection?: string;
-  minPrice?: number;
-  maxPrice?: number;
+    id: number;
+    name: string;
+    isDefault: boolean;
+    sellerId: number;
+    reprisingMethod: string;
+    notifications: boolean;
+    createdAt: string;
+    updatedAt: string;
+    productId?: number;
+    fixedPrice?: number;
+    competitorOffset?: number;
+    percentValue?: number;
+    percentDirection?: string;
+    minPrice?: number;
+    maxPrice?: number;
 }
 
 function StrategyPage() {
@@ -66,28 +66,55 @@ function StrategyPage() {
                 }));
             };
 
-            const mockProduct = {
-                id: 1,
-                name: 'Ручка шариковая Erich Krause, синяя, со сменным стержнем, нажимной механизм',
-                link: 'https://example.com/product/1',
-                discount_price: 79,
-                base_price: 89,
-                star_count: 4.5,
-                review_count: 342,
-                children: generateChildren(1, 'Ручка шариковая Erich Krause, синяя'),
-                sellerId: 1,
-                currentStrategy: {
+            let mockProduct;
+
+            if (productId == '272261148') {
+                mockProduct = {
                     id: 1,
-                    name: "Текущая стратегия",
-                    isDefault: false,
+                    name: 'FIT Валик велюровый для краски 70 мм диаметр 15/23 мм ворс 4 мм бюгель 6 мм длина ручки 300 мм',
+                    link: 'https://example.com/product/1',
+                    discount_price: 79,
+                    base_price: 89,
+                    star_count: 4.5,
+                    review_count: 342,
+                    children: generateChildren(1, 'Ручка шариковая Erich Krause, синяя'),
                     sellerId: 1,
-                    reprisingMethod: 'fixed',
-                    notifications: true,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                    productId: 1
-                }
-            };
+                    currentStrategy: {
+                        id: 1,
+                        name: "Текущая стратегия",
+                        isDefault: false,
+                        sellerId: 2,
+                        reprisingMethod: 'fixed',
+                        notifications: true,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        productId: 1
+                    }
+                };
+            } else {
+                mockProduct = {
+                    id: 2,
+                    name: 'FIT Молоток 600 гр. кованый DIN 1041, деревянная рукоятка Профи',
+                    link: 'https://example.com/product/1',
+                    discount_price: 79,
+                    base_price: 89,
+                    star_count: 4.5,
+                    review_count: 342,
+                    children: generateChildren(1, 'Ручка шариковая Erich Krause, синяя'),
+                    sellerId: 1,
+                    currentStrategy: {
+                        id: 3,
+                        name: "Текущая стратегия",
+                        isDefault: false,
+                        sellerId: 2,
+                        reprisingMethod: 'fixed',
+                        notifications: true,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        productId: 2
+                    }
+                };
+            }
 
             setProduct(mockProduct);
             setActiveTab('product');
@@ -117,7 +144,7 @@ function StrategyPage() {
                 name: "Стратегия по умолчанию",
                 isDefault: true,
                 sellerId: sellerId!,
-                reprisingMethod: 'fixed',
+                reprisingMethod: 'competitor',
                 notifications: true,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
@@ -134,13 +161,13 @@ function StrategyPage() {
     useEffect(() => {
         if (product) {
             form.setFieldsValue(product.currentStrategy || {
-                reprisingMethod: 'fixed',
+                reprisingMethod: 'competitor',
                 notifications: true,
                 isDefault: false,
                 productId: product.id,
                 sellerId: product.sellerId
             });
-            setActiveMethod(product.currentStrategy?.reprisingMethod || 'fixed');
+            setActiveMethod(product.currentStrategy?.reprisingMethod || 'competitor');
         } else if (defaultStrategy) {
             form.setFieldsValue(defaultStrategy);
             setActiveMethod(defaultStrategy.reprisingMethod);
@@ -151,7 +178,7 @@ function StrategyPage() {
         try {
             setIsLoading(true);
             const values = await form.validateFields();
-            
+
             const strategyData: Strategy = {
                 ...values,
                 id: product?.currentStrategy?.id || defaultStrategy?.id || 0,
@@ -193,12 +220,12 @@ function StrategyPage() {
         setActiveTab(key);
         form.resetFields();
         setActiveMethod(null);
-        
+
         if (key === 'default' && sellerId) {
             loadDefaultStrategy();
         } else if (product) {
             form.setFieldsValue(product.currentStrategy || {
-                reprisingMethod: 'fixed',
+                reprisingMethod: 'competitor',
                 notifications: true,
                 isDefault: false,
                 productId: product.id,
@@ -314,7 +341,7 @@ function StrategyPage() {
                                 placeholder="Например: 5"
                             />
                         </Form.Item>
-                        
+
                         <Form.Item
                             label={<span style={{ color: 'white' }}>Направление отклонения</span>}
                             name="percentDirection"
@@ -325,7 +352,7 @@ function StrategyPage() {
                                 <Radio value="below"><span style={{ color: 'white' }}>Ниже цены конкурента (-%)</span></Radio>
                             </Radio.Group>
                         </Form.Item>
-                        
+
                         <Form.Item
                             label={<span style={{ color: 'white' }}>Базовый конкурент для расчета</span>}
                             name="percentBase"
@@ -384,21 +411,23 @@ function StrategyPage() {
             >
                 <Radio.Group onChange={handleMethodChange} style={{ width: '100%' }}>
                     <Space direction="vertical" style={{ width: '100%' }}>
-                        <Card
-                            onClick={() => handleCardClick('fixed')}
-                            style={{
-                                cursor: 'pointer',
-                                background: activeMethod === 'fixed' ? 'rgba(0,185,107,0.1)' : 'transparent',
-                                borderColor: '#434343'
-                            }}
-                        >
-                            <Radio value="fixed">
-                                <Text strong style={{ color: 'white' }}>Фиксированная цена</Text>
-                                <Text style={{ color: 'white', display: 'block', marginTop: 4 }}>
-                                    Цена остается постоянной и не зависит от конкурентов
-                                </Text>
-                            </Radio>
-                        </Card>
+                        {(activeTab === 'default' && product) || !product
+                            ? null
+                            : <Card
+                                onClick={() => handleCardClick('fixed')}
+                                style={{
+                                    cursor: 'pointer',
+                                    background: activeMethod === 'fixed' ? 'rgba(0,185,107,0.1)' : 'transparent',
+                                    borderColor: '#434343'
+                                }}
+                            >
+                                <Radio value="fixed">
+                                    <Text strong style={{ color: 'white' }}>Фиксированная цена</Text>
+                                    <Text style={{ color: 'white', display: 'block', marginTop: 4 }}>
+                                        Цена остается постоянной и не зависит от конкурентов
+                                    </Text>
+                                </Radio>
+                            </Card>}
 
                         <Card
                             onClick={() => handleCardClick('competitor')}
@@ -473,7 +502,7 @@ function StrategyPage() {
             </Form.Item>
 
             <Form.Item
-                label={<span style={{ color: 'white' }}>Уведомления об изменениях</span>}
+                label={<span style={{ color: 'white' }}>Уведомлять об изменениях на почту</span>}
                 name="notifications"
                 valuePropName="checked"
             >
@@ -591,22 +620,22 @@ function StrategyPage() {
                         <b>{product ? 'Стратегия для товара' : 'Стратегия по умолчанию'}</b>
                     </Title>
                     <Text style={{ color: 'white', display: 'block', textAlign: 'center', marginBottom: 24 }}>
-                        {product 
+                        {product
                             ? `Настройте правила автоматического изменения цен для "${product.name}"`
                             : 'Настройте правила по умолчанию для всех товаров'}
                     </Text>
 
-                    <Card 
-                        variant="borderless" 
-                        style={{ 
-                            background: 'rgba(255,255,255,0.1)', 
+                    <Card
+                        variant="borderless"
+                        style={{
+                            background: 'rgba(255,255,255,0.1)',
                             borderRadius: 8,
                             border: '1px solid #434343'
                         }}
                     >
                         {product ? (
-                            <Tabs 
-                                activeKey={activeTab} 
+                            <Tabs
+                                activeKey={activeTab}
                                 onChange={handleTabChange}
                                 items={tabItems}
                                 style={{ color: 'white' }}

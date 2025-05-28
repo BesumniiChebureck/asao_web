@@ -23,6 +23,10 @@ export const registration = async (name: string, email: string): Promise<any> =>
 
 // Если токен в куки есть - true, иначе false
 export const hasTokenInCookies = () => {
+  if (IS_DAN_BACKEND_MODE) {
+    const userName = localStorage.getItem('userName');
+    return userName !== undefined && userName !== null;
+  }
 
   if (DEBUG_MODE_WITHOUT_AUTH) {
     return true;
@@ -35,6 +39,12 @@ export const hasTokenInCookies = () => {
 // Удалить токен из куки. Если получилось - true, иначе false
 export const removeTokenFromCookies = () => {
   try {
+    if (IS_DAN_BACKEND_MODE) {
+      localStorage.removeItem('userName');
+      localStorage.removeItem('sellerId');
+      localStorage.removeItem('authDate');
+      return true;
+    }
     Cookies.remove(globalThis.ASAO_ACCESS_TOKEN_NAME);
     return true;
   } catch (error) {

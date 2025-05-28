@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Button, Flex, Input, Layout, Space, Table, TableColumnsType, Slider, Dropdown, Typography, Modal, message, Divider, MenuProps } from "antd";
-import { DownloadOutlined, DownOutlined, SettingOutlined, LineChartOutlined, BarChartOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Button, Flex, Input, Layout, Space, Table, TableColumnsType, Slider, Dropdown, Typography, Modal, message, Divider, MenuProps, Alert, Tooltip } from "antd";
+import { DownloadOutlined, DownOutlined, SettingOutlined, LineChartOutlined, BarChartOutlined, DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import '@ant-design/v5-patch-for-react-19';
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import ky from "ky";
 
 interface Props {
     products: Product[];
@@ -20,18 +21,34 @@ export const ProductTable = ({ products = [] }: Props) => {
 
     // Вычисляем диапазоны значений из данных
     const calculateRanges = (data: Product[]) => {
-        const prices = data.flatMap(item => [item.discount_price, item.base_price]);
-        const stars = data.map(item => item.star_count);
-        const reviews = data.map(item => item.review_count);
+        // Функция для безопасного добавления значений, игнорируя null/undefined
+        const addValue = (arr: number[], value: number | null | undefined) => {
+            if (value != null && !isNaN(value)) {
+                arr.push(value);
+            }
+        };
 
-        // Рекурсивно обрабатываем children
+        const prices: number[] = [];
+        const stars: number[] = [];
+        const reviews: number[] = [];
+
+        // Обработка основного массива данных
+        data.forEach(item => {
+            addValue(prices, item.discount_price);
+            addValue(prices, item.base_price);
+            addValue(stars, item.star_count);
+            addValue(reviews, item.review_count);
+        });
+
+        // Рекурсивная обработка children
         const processChildren = (items: Product[]) => {
             items.forEach(item => {
                 if (item.children) {
                     item.children.forEach(child => {
-                        prices.push(child.discount_price, child.base_price);
-                        stars.push(child.star_count);
-                        reviews.push(child.review_count);
+                        addValue(prices, child.discount_price);
+                        addValue(prices, child.base_price);
+                        addValue(stars, child.star_count);
+                        addValue(reviews, child.review_count);
                     });
                     processChildren(item.children);
                 }
@@ -40,13 +57,17 @@ export const ProductTable = ({ products = [] }: Props) => {
 
         processChildren(data);
 
+        // Проверка на случай, если все значения были null
+        const getSafeMin = (arr: number[]) => arr.length > 0 ? Math.min(...arr) : 0;
+        const getSafeMax = (arr: number[]) => arr.length > 0 ? Math.max(...arr) : 0;
+
         return {
-            minPrice: Math.min(...prices),
-            maxPrice: Math.max(...prices),
-            minRating: Math.min(...stars),
-            maxRating: Math.max(...stars),
-            minReviews: Math.min(...reviews),
-            maxReviews: Math.max(...reviews),
+            minPrice: getSafeMin(prices),
+            maxPrice: getSafeMax(prices),
+            minRating: getSafeMin(stars),
+            maxRating: getSafeMax(stars),
+            minReviews: getSafeMin(reviews),
+            maxReviews: getSafeMax(reviews),
         };
     };
 
@@ -58,10 +79,19 @@ export const ProductTable = ({ products = [] }: Props) => {
     const [reviewRange, setReviewRange] = useState<[number, number]>([ranges.minReviews, ranges.maxReviews]);
     const tableRef = useRef<HTMLDivElement>(null);
 
-    // Состояния для модального окна добавления товара
+    const [backgroundRequests, setBackgroundRequests] = useState<{
+        [key: string]: {
+            status: 'pending' | 'success' | 'error';
+            message?: string;
+        }
+    }>({});
+
+    // Состояния для модального окна
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [productLink, setProductLink] = useState('');
+    const [productSearchName, setProductSearchName] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
         setRanges(calculateRanges(baseData));
@@ -79,28 +109,120 @@ export const ProductTable = ({ products = [] }: Props) => {
     const handleAddProduct = async () => {
         if (!productLink.trim()) return;
 
-        setLoading(true);
-        try {
-            // Здесь будет API-запрос для добавления товара
-            console.log('Добавляем товар по ссылке:', productLink);
+        const sellerId = localStorage.getItem('sellerId');
+        if (!sellerId) {
+            message.error('Не удалось определить идентификатор продавца');
+            return;
+        }
 
-            if (true) {
-                message.success("Товар успешно добавлен!");
-            } else {
-                message.error("Ошибка при добавлении товара");
+        // Генерируем уникальный ID для этого запроса
+        const requestId = `add-product-${Date.now()}`;
+
+        // Помечаем запрос как выполняющийся
+        setBackgroundRequests(prev => ({
+            ...prev,
+            [requestId]: { status: 'pending' }
+        }));
+
+        // Закрываем модальное окно
+        setIsAddModalOpen(false);
+        setProductLink('');
+        setProductSearchName('');
+
+        try {
+            const searchName = productSearchName.trim();
+            let productUrl = productLink.split('/?')[0];
+
+            // Регулярное выражение для проверки, что строка заканчивается на как минимум 3 цифры
+            const regex = /\d{3,}$/;
+
+            if (!regex.test(productUrl)) {
+                productUrl = productLink;
             }
 
-            // После успешного добавления:
-            setIsAddModalOpen(false);
-            setProductLink('');
-            // Можно добавить обновление данных таблицы
-            // Например: fetchProducts(); 
+            const apiUrl = `${ASAO_MAIN_API_HOST}products/`;
+
+            const response = await ky.post(apiUrl, {
+                searchParams: {
+                    search_name: searchName,
+                    own_product_url: productUrl,
+                    seller_id: sellerId
+                },
+                headers: {
+                    'accept': 'application/json'
+                },
+                timeout: 600000, //10 минут
+                body: null
+            });
+
+            const data: any = await response.json();
+
+            if (data.products) {
+                // Обновляем статус запроса
+                setBackgroundRequests(prev => ({
+                    ...prev,
+                    [requestId]: {
+                        status: 'success',
+                        message: 'Товар успешно добавлен в систему!'
+                    }
+                }));
+
+                // Показываем уведомление
+                message.success({
+                    content: (
+                        <span>
+                            Товар успешно добавлен в систему! <br />
+                            <Button
+                                type="link"
+                                size="small"
+                                onClick={() => message.destroy()}
+                                style={{ padding: 0, height: 'auto' }}
+                            >
+                                Закрыть
+                            </Button>
+                        </span>
+                    ),
+                    duration: 0,
+                    key: requestId
+                });
+
+                // Обновляем данные после удаления
+                try {
+                    const response = await ky.get(`${ASAO_MAIN_API_HOST}products/?seller_id=${sellerId}&skip=0&limit=1000`);
+                    const data: any = await response.json();
+
+                    if (data.message) {
+                        message.error(data.message);
+                    } else {
+                        console.log("API data:", data);
+                        products = data;
+                    }
+                } catch (error) {
+                    console.error('API error:', error);
+                    message.error("Непредвиденная ошибка. Повторите попытку или попробуйте выполнить запрос позже.");
+                }
+            } else {
+                throw new Error('Не удалось добавить товар');
+            }
         } catch (error) {
             console.error('Ошибка при добавлении товара:', error);
-        } finally {
-            setLoading(false);
+
+            setBackgroundRequests(prev => ({
+                ...prev,
+                [requestId]: {
+                    status: 'error',
+                    message: 'Произошла ошибка при добавлении товара. Пожалуйста, попробуйте позже.'
+                }
+            }));
+
+            message.error({
+                content: 'Произошла ошибка при добавлении товара. Пожалуйста, попробуйте позже.',
+                duration: 0,
+                key: requestId
+            });
         }
     };
+
 
     // Экспорт в Excel/CSV
     const exportToExcel = (type: 'xlsx' | 'csv') => {
@@ -118,12 +240,12 @@ export const ProductTable = ({ products = [] }: Props) => {
         const allProducts = flattenProducts(filteredData);
 
         const dataToExport = allProducts.map(item => ({
-            ID: item.id,
-            Название: item.name,
-            'Базовая цена': item.base_price,
-            'Цена со скидкой': item.discount_price,
-            'Рейтинг': item.star_count,
-            'Отзывы': item.review_count,
+            'Артикул': item.id,
+            'Название': item.name || '-',
+            'Базовая цена': item.base_price || '-',
+            'Цена со скидкой': item.discount_price || '-',
+            'Рейтинг': item.star_count || '-',
+            'Отзывы': item.review_count || '-',
             'Ссылка': item.link,
             'Принадлежность': item.children ? 'Собственный' : 'Конкурент'
         }));
@@ -132,7 +254,10 @@ export const ProductTable = ({ products = [] }: Props) => {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Товары");
 
-        const fileName = `products_${new Date().toISOString().slice(0, 10)}`;
+        // Московское время для формирование отчёта
+        const mscDate = new Date();
+        mscDate.setHours(mscDate.getHours() + 3);
+        const fileName = `Список_товаров_${mscDate.toISOString().slice(0, 10)}`;
 
         if (type === 'xlsx') {
             XLSX.writeFile(workbook, `${fileName}.xlsx`);
@@ -184,6 +309,7 @@ export const ProductTable = ({ products = [] }: Props) => {
         const MAX_LENGTH = 70;
         const isLongText = text?.length > MAX_LENGTH;
         const displayedText = isLongText ? `${text.substring(0, MAX_LENGTH)}...` : text;
+        const [modalOpen, setModalOpen] = useState(false);
 
         return (
             <div style={{ position: 'relative', paddingRight: isLongText ? 70 : 0 }}>
@@ -206,48 +332,108 @@ export const ProductTable = ({ products = [] }: Props) => {
                 </Link>
 
                 {isLongText && (
-                    <Button
-                        type="link"
-                        size="small"
-                        style={{
-                            position: 'absolute',
-                            right: 0,
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            padding: '0 4px',
-                            height: 'auto'
-                        }}
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            Modal.info({
-                                title: 'Полное наименование',
-                                content: (
-                                    <div style={{ marginTop: 16 }}>
-                                        <p>{text}</p>
-                                        <Button
-                                            type="primary"
-                                            onClick={() => window.open(link, '_blank')}
-                                            style={{ marginTop: 16 }}
-                                        >
-                                            Перейти к товару
-                                        </Button>
-                                    </div>
-                                ),
-                                width: 600,
-                            });
-                        }}
-                    >
-                        Подробнее
-                    </Button>
+                    <>
+                        <Button
+                            type="link"
+                            size="small"
+                            style={{
+                                position: 'absolute',
+                                right: 0,
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                padding: '0 4px',
+                                height: 'auto'
+                            }}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setModalOpen(true);
+                            }}
+                        >
+                            Подробнее
+                        </Button>
+
+                        <Modal
+                            title="Полное наименование"
+                            open={modalOpen}
+                            onCancel={() => setModalOpen(false)}
+                            footer={[
+                                <Button
+                                    key="link"
+                                    type="primary"
+                                    onClick={() => window.open(link, '_blank')}
+                                >
+                                    Перейти к товару
+                                </Button>,
+                                <Button key="back" onClick={() => setModalOpen(false)}>
+                                    Закрыть
+                                </Button>
+                            ]}
+                            width={600}
+                        >
+                            <p>{text}</p>
+                        </Modal>
+                    </>
                 )}
             </div>
         );
     };
 
+    const handleOpenDelMsg = async (product: Product) => {
+        const sellerId = localStorage.getItem('sellerId');
+        if (!sellerId) {
+            message.error('Не удалось определить идентификатор продавца');
+            return;
+        }
 
-    const handleOpenDelMsg = (product: Product) => {
-        alert(`Функционал в разработке.`);
+        try {
+            // Показываем подтверждающий диалог перед удалением
+            Modal.confirm({
+                title: 'Удаление товара',
+                content: `Вы уверены, что хотите удалить товар "${product.name}" (артикул: ${product.id})?`,
+                okText: 'Удалить',
+                cancelText: 'Отмена',
+                okButtonProps: { danger: true },
+                async onOk() {
+                    try {
+                        const response = await ky.delete(`${ASAO_MAIN_API_HOST}products/${product.id}`, {
+                            searchParams: { seller_id: sellerId },
+                            headers: {
+                                'accept': 'application/json'
+                            }
+                        });
+
+                        if (response.ok) {
+                            message.success('Товар успешно удален');
+
+                            // Обновляем данные после удаления
+                            try {
+                                const response = await ky.get(`${ASAO_MAIN_API_HOST}products/?seller_id=${sellerId}&skip=0&limit=1000`);
+                                const data: any = await response.json();
+
+                                if (data.message) {
+                                    message.error(data.message);
+                                } else {
+                                    console.log("API data:", data);
+                                    products = data;
+                                }
+                            } catch (error) {
+                                console.error('API error:', error);
+                                message.error("Непредвиденная ошибка. Повторите попытку или попробуйте выполнить запрос позже.");
+                            }
+                        } else {
+                            throw new Error('Не удалось удалить товар');
+                        }
+                    } catch (error) {
+                        console.error('Ошибка при удалении товара:', error);
+                        message.error('Произошла ошибка при удалении товара. Пожалуйста, попробуйте позже.');
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Ошибка при удалении товара:', error);
+            message.error('Произошла ошибка при удалении товара. Пожалуйста, попробуйте позже.');
+        }
     };
 
     const handleOpenStrategy = (product: Product) => {
@@ -265,44 +451,12 @@ export const ProductTable = ({ products = [] }: Props) => {
         router.push(`/forecast?productId=${product.id}`);
     };
 
-    type MenuItem = Required<MenuProps>['items'][number] & {
-        key: string;
-        label: React.ReactNode;
-        icon?: React.ReactNode;
-        onClick?: (e: { domEvent: React.MouseEvent }) => void;
-    };
-
-    const baseItems: (MenuItem | { type: 'divider' })[] = [
-        {
-            key: 'statistics',
-            label: 'Статистика',
-            icon: <BarChartOutlined />,
-        },
-        {
-            key: 'forecasting',
-            label: 'Прогноз',
-            icon: <LineChartOutlined />,
-        },
-        { type: 'divider' },
-        {
-            key: 'strategy',
-            label: 'Стратегия авторегулирования цен',
-            icon: <SettingOutlined />,
-        },
-        { type: 'divider' },
-        {
-            key: 'delete',
-            label: 'Удалить товар',
-            icon: <DeleteOutlined />,
-        },
-    ];
-
     const columns: TableColumnsType<Product> = [
         {
-            title: 'ID',
+            title: 'Артикул',
             dataIndex: 'id',
             key: 'id',
-            width: 80,
+            width: '12%',
             sorter: (a, b) => a.id - b.id
         },
         {
@@ -438,10 +592,33 @@ export const ProductTable = ({ products = [] }: Props) => {
     return (
         <Layout style={{ background: "transparent" }}>
             <Space direction="vertical" size="middle" style={{ display: 'flex' }}>
+                {/* Панель уведомлений о фоновых операциях */}
+                <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 1000 }}>
+                    {Object.entries(backgroundRequests).map(([id, request]) => (
+                        request.status === 'pending' && (
+                            <Alert
+                                key={id}
+                                message="Добавление товара"
+                                description="Запрос выполняется в фоновом режиме. Вы получите уведомление по завершении."
+                                type="info"
+                                showIcon
+                                closable
+                                onClose={() => {
+                                    setBackgroundRequests(prev => {
+                                        const newState = { ...prev };
+                                        delete newState[id];
+                                        return newState;
+                                    });
+                                }}
+                                style={{ marginBottom: 10, width: 300 }}
+                            />
+                        )
+                    ))}
+                </div>
                 <Flex justify="space-between" align="center" wrap="wrap" gap="middle">
                     <Flex align="center" gap="middle" wrap>
                         <Search
-                            placeholder="Поиск по ID"
+                            placeholder="Поиск по артикулу"
                             allowClear
                             onChange={(e) => {
                                 const value = e.target.value.toLowerCase();
@@ -553,6 +730,7 @@ export const ProductTable = ({ products = [] }: Props) => {
                     onCancel={() => {
                         setIsAddModalOpen(false);
                         setProductLink('');
+                        setProductSearchName('');
                     }}
                     confirmLoading={loading}
                     okText="Добавить"
@@ -560,19 +738,53 @@ export const ProductTable = ({ products = [] }: Props) => {
                     okButtonProps={{
                         disabled: !productLink.trim() || !isValidUrl(productLink)
                     }}
+                    width={600}
                 >
-                    <Input
-                        placeholder="Введите ссылку на товар"
-                        value={productLink}
-                        onChange={(e) => setProductLink(e.target.value)}
-                        onPressEnter={handleAddProduct}
-                        autoFocus
-                    />
-                    {productLink && !isValidUrl(productLink) && (
-                        <Text type="danger" style={{ marginTop: 8 }}>
-                            Пожалуйста, введите корректную ссылку
-                        </Text>
-                    )}
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                        <div>
+                            <Text strong>Ссылка на товар</Text>
+                            <Input
+                                placeholder="Введите ссылку на товар"
+                                value={productLink}
+                                onChange={(e) => setProductLink(e.target.value)}
+                                onPressEnter={handleAddProduct}
+                                autoFocus
+                            />
+                            {productLink && !isValidUrl(productLink) && (
+                                <Text type="danger" style={{ marginTop: 8, display: 'block' }}>
+                                    Пожалуйста, введите корректную ссылку
+                                </Text>
+                            )}
+                        </div>
+
+                        <div>
+                            <Flex align="center" gap={4}>
+                                <Text strong>Наименование для поиска конкурентов</Text>
+                                <Tooltip
+                                    title="Если ничего не указать, поиск будет осуществляться по наименованию товара из карточки товара"
+                                    placement="right"
+                                >
+                                    <InfoCircleOutlined style={{ color: '#8c8c8c', cursor: 'help' }} />
+                                </Tooltip>
+                            </Flex>
+                            <Input
+                                placeholder="Введите наименование по которому будет осуществляться поиск"
+                                value={productSearchName}
+                                onChange={(e) => setProductSearchName(e.target.value)}
+                                onPressEnter={handleAddProduct}
+                                style={{ marginTop: 4 }}
+                            />
+                        </div>
+
+                        {isProcessing && (
+                            <Alert
+                                message="Обработка запроса"
+                                description="Добавление товара может занять до 5 минут.."
+                                type="info"
+                                showIcon
+                            />
+                        )}
+                    </Space>
                 </Modal>
             </Space>
         </Layout>

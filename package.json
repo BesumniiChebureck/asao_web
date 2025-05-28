@@ -14,6 +14,7 @@
     "js-cookie": "^3.0.5",
     "ky": "^1.7.5",
     "next": "15.1.7",
+    "pg": "^8.16.0",
     "plotly.js": "^3.0.1",
     "react-plotly.js": "^2.6.0",
     "xlsx": "^0.18.5"
@@ -22,6 +23,7 @@
     "@eslint/eslintrc": "^3",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^20",
+    "@types/pg": "^8.15.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/react-plotly.js": "^2.6.3",

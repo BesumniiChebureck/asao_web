@@ -1,13 +1,62 @@
 "use client";
 
-import { Layout, Typography } from "antd";
+import { Layout, message, Spin, Typography } from "antd";
 import '@ant-design/v5-patch-for-react-19';
 import { withAuth } from "../hocs/withAuth";
 import { ProductTable } from "../components/productTable";
+import { useEffect, useState } from "react";
+import ky from "ky";
 
 const { Title } = Typography;
 
 function ProductListPage() {
+    const [products, setProducts] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                if (IS_DAN_BACKEND_MODE) {
+                    try {
+                        const sellerId = localStorage.getItem('sellerId');
+                        const response = await ky.get(`${ASAO_MAIN_API_HOST}products/?seller_id=${sellerId}&skip=0&limit=1000`);
+                        const data: any = await response.json();
+
+                        if (data.message) {
+                            message.error(data.message);
+                            setProducts([]);
+                        } else {
+                            console.log("API data:", data);
+                            setProducts(data);
+                        }
+                    } catch (error) {
+                        console.error('API error:', error);
+                        message.error("Непредвиденная ошибка. Повторите попытку или попробуйте выполнить запрос позже.");
+                        setProducts([]); // Устанавливаем пустой массив в случае ошибки
+                    }
+                } else {
+                    setProducts(testData);
+                }
+
+                // if (process.env.NEXT_PUBLIC_DEBUG_MODE !== 'true') {
+                //     // const data = await getProducts();
+                //     // setProducts(data);
+                //     setProducts(testData);
+                // } else {
+                //     // Используем тестовые данные в режиме DEBUG
+                //     setProducts(testData);
+                // }
+            } catch (error) {
+                console.error('Error loading products:', error);
+                setProducts([]);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        loadData();
+    }, []);
+
     const generateChildren = (baseId: number, baseName: string) => {
         return Array.from({ length: 5 }, (_, i) => ({
             id: baseId * 100 + i + 1,
@@ -123,11 +172,19 @@ function ProductListPage() {
         }
     ];
 
+    if (loading) {
+        return (
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+                <Spin size="large" />
+            </div>
+        );
+    }
+
     return (
         <Layout style={{ padding: 20, background: "transparent" }}>
             <Title level={3} style={{ color: "white", textAlign: "center" }}><b>Список товаров</b></Title>
             <br />
-            <ProductTable products={testData} />
+            {products && <ProductTable products={products} />}
         </Layout>
     );
 }

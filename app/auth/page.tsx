@@ -7,6 +7,7 @@ import { Form, Input, Button, message, Flex, Typography, Spin, Layout, Space, Im
 import '@ant-design/v5-patch-for-react-19';
 import { hasTokenInCookies, login, setTokenInCookies } from '../services/user-access';
 import Link from "next/link";
+import ky from "ky";
 
 const { Title } = Typography;
 
@@ -46,6 +47,37 @@ export default function LoginPage() {
 
     const handleLogin = (values: { email: string; password: string }) => {
         setTimeout(async () => {
+
+            if (IS_DAN_BACKEND_MODE) {
+                try {
+                    const responseBody = await ky.get(`${ASAO_MAIN_API_HOST}sellers/auth/?email=${values.email}&password=${values.password}`);
+
+                    const response: any = responseBody.json();
+
+                    if (response.message) {
+                        message.error(response.message)
+                    } else {
+                        // Сохраняем идентификатор продавца
+                        if (response.id) {
+                            localStorage.setItem('sellerId', response.id);
+                        }
+
+                        // Сохраняем имя пользователя и дату авторизации в localStorage
+                        if (response.name) {
+                            localStorage.setItem('userName', response.name);
+                            
+                            const mscDate = new Date();
+                            mscDate.setHours(mscDate.getHours() + 3);
+                            localStorage.setItem('authDate', mscDate.toLocaleDateString());
+                        }
+
+                        message.success("Успешный вход!");
+                        router.replace("/productList");
+                    }
+                } catch (error) {
+                    message.error("Непредвиденная ошибка. Повторите попытку или попробуйте выполнить запрос позже.");
+                }
+            }
 
             if (DEBUG_MODE_WITHOUT_AUTH) {
                 localStorage.setItem('userName', "Симбат");

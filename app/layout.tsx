@@ -21,13 +21,16 @@ const { Text } = Typography;
   theme={{
     components: {
       Menu: {
-        itemColor: 'white',
-        subMenuItemBg: 'white',
-        itemSelectedColor: 'white',
+        itemColor: 'white', // Цвет текста обычных элементов
+        itemHoverColor: 'white', // Цвет текста при наведении
+        itemSelectedColor: 'white', // Цвет текста выбранного элемента
+        itemSelectedBg: 'rgba(255, 255, 255, 0.1)', // Фон выбранного элемента (можно настроить по желанию)
       },
     },
   }}
-></ConfigProvider>
+>
+
+</ConfigProvider>
 
 type MenuItem = Required<MenuProps>['items'][number];
 
@@ -140,78 +143,110 @@ export default function RootLayout({
       key: 'main',
       label: <Link href={"/"}><Image src='/logo.png' width={200} preview={false} alt='Логотип' /></Link>,
     },
-    // {
-    //   key: "dashboard",
-    //   label: <Link href={"/dashboard"}>Рабочее пространство</Link>,
-    //   icon: <HomeOutlined />
-    // },
     {
       key: "productList",
-      label: <Link href={"/productList"}>Список товаров</Link>,
+      label: <Link href={"/productList"} style={{ color: 'white' }}>Список товаров</Link>,
       icon: <InsertRowAboveOutlined />
     },
     {
       key: "statistics",
-      label: <Link href={"/statistics"}>Статистика</Link>,
+      label: <Link href={"/statistics"} style={{ color: 'white' }}>Статистика</Link>,
       icon: <BarChartOutlined />
     },
     {
       key: "forecasting",
-      label: <Link href={"/forecasting"}>Прогнозирование</Link>,
+      label: <Link href={"/forecasting"} style={{ color: 'white' }}>Прогнозирование</Link>,
       icon: <LineChartOutlined />
     },
     {
       key: "strategy",
-      label: <Link href={"/strategy"}>Стратегия авторегулирования цен</Link>,
+      label: <Link href={"/strategy"} style={{ color: 'white' }}>Стратегия регулирования цен</Link>,
       icon: <SlidersOutlined />
     },
     {
       key: 'subMenu',
-      label: 'Дополнительно',
+      label: <Text style={{ color: 'white' }}>Дополнительно</Text>,
       icon: <CaretDownOutlined />,
       children: [
-        ...adminItems,
         {
-          key: "logout", label:
-            <Popconfirm
-              title="Выход из аккаунта"
-              description="Вы уверены, что хотите выйти из аккаунта?"
-              onConfirm={logout}
-              okText="Да"
-              cancelText="Нет"
-            >
-              <Button
-                type="primary"
+          key: "lk", label:
+            <Text>
+              <b style={{ color: "white" }}>{userName}</b>
+              <Popconfirm
+                title="Выход из аккаунта"
+                description="Вы уверены, что хотите выйти из аккаунта?"
+                onConfirm={logout}
+                okText="Да"
+                cancelText="Нет"
               >
-                Выход из аккаунта
-              </Button>
-            </Popconfirm>
+                <Button
+                  type="link"
+                  style={{ color: 'white' }}
+                >
+                  <u>Выйти из аккаунта</u>
+                </Button>
+              </Popconfirm>
+            </Text>
         },
       ],
     },
+    // {
+    //   key: 'subMenu',
+    //   label: <Text style={{ color: 'white' }}>Дополнительно</Text>,
+    //   icon: <CaretDownOutlined />,
+    //   children: [
+    //     ...adminItems,
+    //     {
+    //       key: "logout", label:
+    //         <Popconfirm
+    //           title="Выход из аккаунта"
+    //           description="Вы уверены, что хотите выйти из аккаунта?"
+    //           onConfirm={logout}
+    //           okText="Да"
+    //           cancelText="Нет"
+    //         >
+    //           <Button
+    //             type="primary"
+    //           >
+    //             Выйти из аккаунта
+    //           </Button>
+    //         </Popconfirm>
+    //     },
+    //   ],
+    // },
   ];
 
   return (
     <html lang="ru">
       <body>
         <Layout style={{ minHeight: "100vh", background: "transparent" }}>
-          <Header style={{ background: "transparent" }}>
-            <Menu
-              theme="dark"
-              mode="horizontal"
-              items={items}
-              style={{
-                flex: 1,
-                minWidth: 0,
-                background: "transparent",
-              }}
-            />
-          </Header>
-          <Content style={{ padding: "0 48px", background: "transparent" }}>
-            <ConfigProvider locale={ruRU}>
+          <ConfigProvider
+            theme={{
+              components: {
+                Menu: {
+                  itemColor: 'white', // Цвет текста обычных элементов
+                  itemHoverColor: 'white', // Цвет текста при наведении
+                  itemSelectedColor: 'white', // Цвет текста выбранного элемента
+                  itemSelectedBg: 'rgba(255, 255, 255, 0.1)', // Фон выбранного элемента (можно настроить по желанию)
+                },
+              },
+            }} locale={ruRU}>
+            <Header style={{ background: "transparent" }}>
+              <Menu
+                  theme="dark"
+                  mode="horizontal"
+                  items={items}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    background: "transparent",
+                  }}
+                />
+            </Header>
+            <Content style={{ padding: "0 48px", background: "transparent" }}>
               {children}
-            </ConfigProvider>
-          </Content>
+            </Content>
+          </ConfigProvider>
           <Footer style={{
             position: 'relative',
             display: 'flex',
@@ -237,12 +272,27 @@ export default function RootLayout({
             <Paragraph style={{
               color: "white",
               margin: 0,
-              textAlign: 'right',
+              textAlign: 'center',
               position: 'relative',
               zIndex: 1
             }}>
-              <b>{userName}</b> <br />
-              {authDate}
+              <b>{userName}</b><br />
+              <Popconfirm
+                title="Выход из аккаунта"
+                description="Вы уверены, что хотите выйти из аккаунта?"
+                onConfirm={logout}
+                okText="Да"
+                cancelText="Нет"
+              >
+                <Button
+                  type="link"
+                  style={{ color: 'white' }}
+                >
+                  <u>Выйти из аккаунта</u>
+                </Button>
+              </Popconfirm>
+              {/* <br />
+              {authDate} */}
             </Paragraph>
           </Footer>
         </Layout>

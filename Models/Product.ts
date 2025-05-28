@@ -6,7 +6,7 @@ interface Product {
     sellerId?: number,
     ozon_card_price?: number,
     discount_price: number,
-    base_price: number,
+    base_price: number | null,
     star_count: number,
     review_count: number,
     children?: Product[],

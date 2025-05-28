@@ -1,6 +1,9 @@
 export {};
 
 declare global {
+    var IS_DEBUG_MODE: boolean;
+    var IS_DAN_BACKEND_MODE: boolean;
+
     var DEBUG_MODE: boolean;
     var ASAO_MAIN_API_HOST: string;
     var ASAO_ACCESS_TOKEN_NAME: string;
