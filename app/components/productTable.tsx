@@ -474,9 +474,14 @@ export const ProductTable = ({ products = [] }: Props) => {
             sorter: (a, b) => a.discount_price - b.discount_price,
             render: (_, record) => (
                 <Space>
-                    <span style={{ textDecoration: 'line-through' }}>
-                        {record.base_price} ₽
-                    </span>
+                    {record.base_price ?
+                        (
+                            <span style={{ textDecoration: 'line-through' }}>
+                                {record.base_price} ₽
+                            </span>
+                        )
+                        : null
+                    }
                     <span style={{ fontWeight: 'bold' }}>
                         {record.discount_price} ₽
                     </span>
