@@ -4,7 +4,7 @@ import { Layout, message, Spin, Typography } from "antd";
 import '@ant-design/v5-patch-for-react-19';
 import { withAuth } from "../hocs/withAuth";
 import { ProductTable } from "../components/productTable";
-import { useEffect, useState } from "react";
+import { Children, useEffect, useState } from "react";
 import ky from "ky";
 
 const { Title } = Typography;
@@ -59,19 +59,21 @@ function ProductListPage() {
 
     const generateChildren = (baseId: number, baseName: string) => {
         return Array.from({ length: 5 }, (_, i) => ({
-            id: baseId * 100 + i + 1,
+            id: (baseId * 100 + i + 1).toString(),
             name: `${baseName} (конкурент ${i + 1})`,
             link: `https://example.com/product/${baseId * 100 + i + 1}`,
             discount_price: Math.round(Math.random() * 1000),
             base_price: Math.round(Math.random() * 1000 + 500),
             star_count: +(Math.random() * 5).toFixed(1),
-            review_count: Math.floor(Math.random() * 1000)
+            review_count: Math.floor(Math.random() * 1000),
+            correctAmount: null,
+            children: null
         }));
     };
 
     const testData: Product[] = [
         {
-            id: 1,
+            id: '1',
             name: 'Ручка шариковая Erich Krause, синяя, со сменным стержнем, нажимной механизм',
             link: 'https://example.com/product/1',
             discount_price: 79,
@@ -81,7 +83,7 @@ function ProductListPage() {
             children: generateChildren(1, 'Ручка шариковая Erich Krause, синяя')
         },
         {
-            id: 2,
+            id: '2',
             name: 'Карандаш Koh-i-Noor HB, 12 шт',
             link: 'https://example.com/product/2',
             discount_price: 420,
@@ -91,7 +93,7 @@ function ProductListPage() {
             children: generateChildren(2, 'Карандаш Koh-i-Noor HB, 12 шт')
         },
         {
-            id: 3,
+            id: '3',
             name: 'Блокнот Moleskine A5, клетка',
             link: 'https://example.com/product/3',
             discount_price: 1100,
@@ -101,7 +103,7 @@ function ProductListPage() {
             children: generateChildren(3, 'Блокнот Moleskine A5, клетка')
         },
         {
-            id: 4,
+            id: '4',
             name: 'Степлер Brauberg Compact №10',
             link: 'https://example.com/product/4',
             discount_price: 290,
@@ -111,7 +113,7 @@ function ProductListPage() {
             children: generateChildren(4, 'Степлер Brauberg Compact №10')
         },
         {
-            id: 5,
+            id: '5',
             name: 'Ластик Koh-i-Noor, белый',
             link: 'https://example.com/product/5',
             discount_price: 50,
@@ -121,7 +123,7 @@ function ProductListPage() {
             children: generateChildren(5, 'Ластик Koh-i-Noor, белый')
         },
         {
-            id: 6,
+            id: '6',
             name: 'Линейка Attache 30см, пластик',
             link: 'https://example.com/product/6',
             discount_price: 70,
@@ -131,7 +133,7 @@ function ProductListPage() {
             children: generateChildren(6, 'Линейка Attache 30см, пластик')
         },
         {
-            id: 7,
+            id: '7',
             name: 'Тонер HP 85A, черный',
             link: 'https://example.com/product/7',
             discount_price: 2900,
@@ -141,7 +143,7 @@ function ProductListPage() {
             children: generateChildren(7, 'Тонер HP 85A, черный')
         },
         {
-            id: 8,
+            id: '8',
             name: 'Скрепки Brauberg №3, 100шт',
             link: 'https://example.com/product/8',
             discount_price: 30,
@@ -151,7 +153,7 @@ function ProductListPage() {
             children: generateChildren(8, 'Скрепки Brauberg №3, 100шт')
         },
         {
-            id: 9,
+            id: '9',
             name: 'Папка-скоросшиватель Attache А4',
             link: 'https://example.com/product/9',
             discount_price: 90,
@@ -161,7 +163,7 @@ function ProductListPage() {
             children: generateChildren(9, 'Папка-скоросшиватель Attache А4')
         },
         {
-            id: 10,
+            id: '10',
             name: 'Корректор Kores "Лента" 8м',
             link: 'https://example.com/product/10',
             discount_price: 120,

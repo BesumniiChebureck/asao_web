@@ -18,25 +18,27 @@ interface Product {
     review_count: number;
     children?: Product[];
     sellerId?: number;
-    currentStrategy?: Strategy;
+    currentStrategy?: ApiStrategy;
 }
 
-interface Strategy {
+interface ApiStrategy {
     id: number;
-    name: string;
-    isDefault: boolean;
-    sellerId: number;
-    reprisingMethod: string;
+    seller_id: number;
+    is_default: boolean;
+    reprising_method: 'FIXED' | 'COMPETITOR' | 'PERCENT';
+    fixed_price: number | null;
+    competitor_offset: number | null;
+    competitor_source: 'MIN' | 'AVG' | 'MAX' | 'SPECIFIC' | null;
+    competitor_article: string | null;
+    percent_value: number | null;
+    percent_direction: 'ABOVE' | 'BELOW' | null;
+    min_price: number | null;
+    max_price: number | null;
     notifications: boolean;
-    createdAt: string;
-    updatedAt: string;
-    productId?: number;
-    fixedPrice?: number;
-    competitorOffset?: number;
-    percentValue?: number;
-    percentDirection?: string;
-    minPrice?: number;
-    maxPrice?: number;
+    created_date: string;
+    updated_date: string | null;
+    deleted_date: string | null;
+    product_id: number | null;
 }
 
 function StrategyPage() {
@@ -47,13 +49,81 @@ function StrategyPage() {
     const [activeMethod, setActiveMethod] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('default');
-    const [defaultStrategy, setDefaultStrategy] = useState<Strategy | null>(null);
+    const [defaultStrategy, setDefaultStrategy] = useState<ApiStrategy | null>(null);
     const [isLoadingStrategy, setIsLoadingStrategy] = useState(false);
     const [sellerId, setSellerId] = useState<number | null>(null);
 
+    const mapApiStrategyToFormValues = (strategy: ApiStrategy) => {
+        return {
+            id: strategy.id,
+            isDefault: strategy.is_default,
+            sellerId: strategy.seller_id,
+            productId: strategy.product_id,
+            reprisingMethod: strategy.reprising_method.toLowerCase() as 'fixed' | 'competitor' | 'percent',
+            fixedPrice: strategy.fixed_price,
+            competitorOffset: strategy.competitor_offset,
+            competitorSource: strategy.competitor_source ? strategy.competitor_source.toLowerCase() as 'min' | 'avg' | 'max' | 'specific' : undefined,
+            competitorArticle: strategy.competitor_article,
+            percentValue: strategy.percent_value,
+            percentDirection: strategy.percent_direction ? strategy.percent_direction.toLowerCase() as 'above' | 'below' : undefined,
+            minPrice: strategy.min_price,
+            maxPrice: strategy.max_price,
+            notifications: strategy.notifications,
+            createdAt: strategy.created_date,
+            updatedAt: strategy.updated_date || new Date().toISOString(),
+            // поля для совместимости со старыми данными
+            percentBase: strategy.competitor_source ? strategy.competitor_source.toLowerCase() as 'min' | 'avg' | 'max' | 'specific' : 'avg',
+            percentBaseArticle: strategy.competitor_article
+        };
+    };
+
+    const mapFormValuesToApiStrategy = (values: any, isDefault: boolean, sellerId: number, productId?: number) => {
+        const isCompetitorMethod = values.reprisingMethod === 'competitor';
+        const isPercentMethod = values.reprisingMethod === 'percent';
+
+        return {
+            seller_id: sellerId,
+            is_default: isDefault,
+            product_id: productId || null,
+            reprising_method: values.reprisingMethod.toUpperCase() as 'FIXED' | 'COMPETITOR' | 'PERCENT',
+            fixed_price: values.reprisingMethod === 'fixed' ? values.fixedPrice : null,
+            competitor_offset: isCompetitorMethod ? values.competitorOffset : null,
+            competitor_source: isCompetitorMethod || isPercentMethod
+                ? (values.competitorSource || values.percentBase)?.toUpperCase() as 'MIN' | 'AVG' | 'MAX' | 'SPECIFIC'
+                : null,
+            competitor_article: (isCompetitorMethod && values.competitorSource === 'specific') ||
+                (isPercentMethod && values.percentBase === 'specific')
+                ? values.competitorArticle || values.percentBaseArticle
+                : null,
+            percent_value: isPercentMethod ? values.percentValue : null,
+            percent_direction: isPercentMethod ? values.percentDirection?.toUpperCase() as 'ABOVE' | 'BELOW' : null,
+            min_price: values.minPrice || null,
+            max_price: values.maxPrice || null,
+            notifications: values.notifications,
+            created_date: new Date().toISOString()
+        };
+    };
+
     useEffect(() => {
-        if (productId) {
-            // Загружаем тестовые данные продукта
+        const storedSellerId = localStorage.getItem('sellerId');
+        if (storedSellerId) {
+            setSellerId(Number(storedSellerId));
+        } else if (globalThis.DEBUG_MODE && globalThis.DEBUG_MODE_WITHOUT_AUTH) {
+            setSellerId(1);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (productId && sellerId) {
+            loadProductStrategy();
+        } else if (sellerId) {
+            loadDefaultStrategy();
+        }
+    }, [productId, sellerId]);
+
+    const loadProductStrategy = async () => {
+        if (!IS_DAN_BACKEND_MODE) {
+            // Тестовые данные
             const generateChildren = (baseId: number, baseName: string) => {
                 return Array.from({ length: 5 }, (_, i) => ({
                     id: baseId * 100 + i + 1,
@@ -70,25 +140,33 @@ function StrategyPage() {
 
             if (productId == '272261148') {
                 mockProduct = {
-                    id: 1,
+                    id: 272261148,
                     name: 'FIT Валик велюровый для краски 70 мм диаметр 15/23 мм ворс 4 мм бюгель 6 мм длина ручки 300 мм',
                     link: 'https://example.com/product/1',
                     discount_price: 79,
                     base_price: 89,
                     star_count: 4.5,
                     review_count: 342,
-                    children: generateChildren(1, 'Ручка шариковая Erich Krause, синяя'),
+                    children: generateChildren(1, 'Валик велюровый для краски 70 мм'),
                     sellerId: 1,
                     currentStrategy: {
                         id: 1,
-                        name: "Текущая стратегия",
-                        isDefault: false,
-                        sellerId: 2,
-                        reprisingMethod: 'fixed',
+                        seller_id: 2,
+                        is_default: false,
+                        reprising_method: 'FIXED' as const,
+                        fixed_price: 1999.99,
+                        competitor_offset: null,
+                        competitor_source: null,
+                        competitor_article: null,
+                        percent_value: null,
+                        percent_direction: null,
+                        min_price: null,
+                        max_price: null,
                         notifications: true,
-                        createdAt: new Date().toISOString(),
-                        updatedAt: new Date().toISOString(),
-                        productId: 1
+                        created_date: new Date().toISOString(),
+                        updated_date: null,
+                        deleted_date: null,
+                        product_id: 1
                     }
                 };
             } else {
@@ -100,56 +178,136 @@ function StrategyPage() {
                     base_price: 89,
                     star_count: 4.5,
                     review_count: 342,
-                    children: generateChildren(1, 'Ручка шариковая Erich Krause, синяя'),
+                    children: generateChildren(1, 'Молоток 600 гр. кованый'),
                     sellerId: 1,
                     currentStrategy: {
                         id: 3,
-                        name: "Текущая стратегия",
-                        isDefault: false,
-                        sellerId: 2,
-                        reprisingMethod: 'fixed',
+                        seller_id: 2,
+                        is_default: false,
+                        reprising_method: 'FIXED' as const,
+                        fixed_price: 1999.99,
+                        competitor_offset: null,
+                        competitor_source: null,
+                        competitor_article: null,
+                        percent_value: null,
+                        percent_direction: null,
+                        min_price: null,
+                        max_price: null,
                         notifications: true,
-                        createdAt: new Date().toISOString(),
-                        updatedAt: new Date().toISOString(),
-                        productId: 2
+                        created_date: new Date().toISOString(),
+                        updated_date: null,
+                        deleted_date: null,
+                        product_id: 2
                     }
                 };
             }
 
             setProduct(mockProduct);
             setActiveTab('product');
+            return;
         }
-    }, [productId]);
 
-    useEffect(() => {
-        const storedSellerId = localStorage.getItem('sellerId');
-        if (storedSellerId) {
-            setSellerId(Number(storedSellerId));
-        } else if (globalThis.DEBUG_MODE && globalThis.DEBUG_MODE_WITHOUT_AUTH) {
-            setSellerId(1);
-        }
-    }, []);
-
-    useEffect(() => {
-        if (!product && sellerId) {
-            loadDefaultStrategy();
-        }
-    }, [sellerId]);
-
-    const loadDefaultStrategy = async () => {
         setIsLoadingStrategy(true);
         try {
-            const mockStrategy: Strategy = {
+            const response = await fetch(`${ASAO_MAIN_API_HOST}strategies/strategy/?seller_id=${sellerId}&product_id=${productId}`);
+            if (!response.ok) throw new Error('Failed to fetch strategy');
+
+            const data: ApiStrategy[] = await response.json();
+
+            // Загружаем информацию о продукте
+            const productResponse = await fetch(`${ASAO_MAIN_API_HOST}products/${productId}/`);
+            if (!productResponse.ok) throw new Error('Failed to fetch product');
+
+            const productData = await productResponse.json();
+
+            const product: Product = {
+                id: productData.id,
+                name: productData.name,
+                link: productData.link,
+                discount_price: productData.discount_price,
+                base_price: productData.base_price,
+                star_count: productData.star_count,
+                review_count: productData.review_count,
+                sellerId: productData.seller_id,
+                currentStrategy: data.length > 0 ? data[0] : undefined // Устанавливаем стратегию, только если она есть
+            };
+
+            setProduct(product);
+            setActiveTab('product');
+
+            // Если стратегии нет, показываем сообщение
+            if (data.length === 0) {
+                message.info('Для этого товара еще нет индивидуальной стратегии. Вы можете создать новую.');
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки стратегии:', error);
+            message.error('Не удалось загрузить информацию о товаре');
+        } finally {
+            setIsLoadingStrategy(false);
+        }
+    };
+
+    const loadDefaultStrategy = async () => {
+        if (!sellerId) return;
+
+        if (!IS_DAN_BACKEND_MODE) {
+            // Тестовые данные
+            const mockStrategy: ApiStrategy = {
                 id: 0,
-                name: "Стратегия по умолчанию",
-                isDefault: true,
-                sellerId: sellerId!,
-                reprisingMethod: 'competitor',
+                seller_id: sellerId,
+                is_default: true,
+                reprising_method: 'COMPETITOR',
+                fixed_price: null,
+                competitor_offset: -100,
+                competitor_source: 'AVG',
+                competitor_article: null,
+                percent_value: null,
+                percent_direction: null,
+                min_price: null,
+                max_price: null,
                 notifications: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
+                created_date: new Date().toISOString(),
+                updated_date: null,
+                deleted_date: null,
+                product_id: null
             };
             setDefaultStrategy(mockStrategy);
+            return;
+        }
+
+        setIsLoadingStrategy(true);
+        try {
+            const response = await fetch(`${ASAO_MAIN_API_HOST}strategies/strategy/?seller_id=${sellerId}`);
+            if (!response.ok) throw new Error('Failed to fetch default strategy');
+
+            const data: ApiStrategy[] = await response.json();
+            if (data.length === 0) {
+                // Если стратегии по умолчанию нет, создаем пустую
+                setDefaultStrategy({
+                    id: 0,
+                    seller_id: sellerId,
+                    is_default: true,
+                    reprising_method: 'COMPETITOR',
+                    fixed_price: null,
+                    competitor_offset: null,
+                    competitor_source: null,
+                    competitor_article: null,
+                    percent_value: null,
+                    percent_direction: null,
+                    min_price: null,
+                    max_price: null,
+                    notifications: true,
+                    created_date: new Date().toISOString(),
+                    updated_date: null,
+                    deleted_date: null,
+                    product_id: null
+                });
+                return;
+            }
+
+            // Находим стратегию по умолчанию (is_default = true)
+            const strategy = data.find(s => s.is_default) || data[0];
+            setDefaultStrategy(strategy);
         } catch (error) {
             console.error('Ошибка загрузки стратегии:', error);
             message.error('Не удалось загрузить стратегию по умолчанию');
@@ -160,17 +318,23 @@ function StrategyPage() {
 
     useEffect(() => {
         if (product) {
-            form.setFieldsValue(product.currentStrategy || {
-                reprisingMethod: 'competitor',
-                notifications: true,
-                isDefault: false,
-                productId: product.id,
-                sellerId: product.sellerId
-            });
-            setActiveMethod(product.currentStrategy?.reprisingMethod || 'competitor');
+            if (product.currentStrategy) {
+                form.setFieldsValue(mapApiStrategyToFormValues(product.currentStrategy));
+                setActiveMethod(product.currentStrategy.reprising_method.toLowerCase());
+            } else {
+                // Устанавливаем значения по умолчанию для новой стратегии
+                form.setFieldsValue({
+                    reprisingMethod: 'competitor',
+                    notifications: true,
+                    isDefault: false,
+                    productId: product.id,
+                    sellerId: product.sellerId
+                });
+                setActiveMethod('competitor');
+            }
         } else if (defaultStrategy) {
-            form.setFieldsValue(defaultStrategy);
-            setActiveMethod(defaultStrategy.reprisingMethod);
+            form.setFieldsValue(mapApiStrategyToFormValues(defaultStrategy));
+            setActiveMethod(defaultStrategy.reprising_method.toLowerCase());
         }
     }, [product, defaultStrategy, form]);
 
@@ -178,19 +342,80 @@ function StrategyPage() {
         try {
             setIsLoading(true);
             const values = await form.validateFields();
+            const isDefault = !product;
+            const currentStrategy = product?.currentStrategy || defaultStrategy;
 
-            const strategyData: Strategy = {
-                ...values,
-                id: product?.currentStrategy?.id || defaultStrategy?.id || 0,
-                isDefault: !product,
-                sellerId: product ? product.sellerId! : sellerId!,
-                productId: product?.id,
-                createdAt: product?.currentStrategy?.createdAt || defaultStrategy?.createdAt || new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
+            if (IS_DAN_BACKEND_MODE) {
+                const apiData = mapFormValuesToApiStrategy(
+                    values,
+                    isDefault,
+                    sellerId!,
+                    product?.id
+                );
 
-            console.log('Saving strategy:', strategyData);
-            message.success('Стратегия успешно сохранена');
+                // Определяем метод и URL в зависимости от существования стратегии
+                const isExistingStrategy = !!currentStrategy?.id;
+                const method = isExistingStrategy ? 'PUT' : 'POST';
+                const url = isExistingStrategy
+                    ? `${ASAO_MAIN_API_HOST}strategies/${currentStrategy?.id}/`
+                    : `${ASAO_MAIN_API_HOST}strategies/`;
+
+                const response = await fetch(url, {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(apiData)
+                });
+
+                if (!response.ok) throw new Error('Failed to save strategy');
+
+                const savedStrategy = await response.json();
+                message.success('Стратегия успешно сохранена');
+
+                if (product) {
+                    setProduct({
+                        ...product,
+                        currentStrategy: savedStrategy
+                    });
+                } else {
+                    setDefaultStrategy(savedStrategy);
+                }
+            } else {
+                // Тестовый режим - просто логируем данные
+                console.log('Saving strategy:', values);
+                message.success('Стратегия успешно сохранена (тестовый режим)');
+
+                const mockStrategy: ApiStrategy = {
+                    id: currentStrategy?.id || Math.floor(Math.random() * 1000),
+                    seller_id: sellerId!,
+                    is_default: isDefault,
+                    reprising_method: values.reprisingMethod.toUpperCase() as any,
+                    fixed_price: values.reprisingMethod === 'fixed' ? values.fixedPrice : null,
+                    competitor_offset: values.reprisingMethod === 'competitor' ? values.competitorOffset : null,
+                    competitor_source: values.reprisingMethod === 'competitor' ? values.competitorSource?.toUpperCase() as any : null,
+                    competitor_article: values.reprisingMethod === 'competitor' && values.competitorSource === 'specific' ? values.competitorArticle : null,
+                    percent_value: values.reprisingMethod === 'percent' ? values.percentValue : null,
+                    percent_direction: values.reprisingMethod === 'percent' ? values.percentDirection?.toUpperCase() as any : null,
+                    min_price: values.minPrice || null,
+                    max_price: values.maxPrice || null,
+                    notifications: values.notifications,
+                    created_date: currentStrategy?.created_date || new Date().toISOString(),
+                    updated_date: new Date().toISOString(),
+                    deleted_date: null,
+                    product_id: product?.id || null
+                };
+
+                if (product) {
+                    setProduct({
+                        ...product,
+                        currentStrategy: mockStrategy
+                    });
+                } else {
+                    setDefaultStrategy(mockStrategy);
+                }
+            }
         } catch (error) {
             console.error('Validation failed:', error);
             message.error('Пожалуйста, заполните все обязательные поля');
@@ -199,6 +424,7 @@ function StrategyPage() {
         }
     };
 
+    // Остальной код остается без изменений
     const handleMethodChange = (e: any) => {
         const method = e.target.value;
         updateMethodSelection(method);
@@ -224,13 +450,19 @@ function StrategyPage() {
         if (key === 'default' && sellerId) {
             loadDefaultStrategy();
         } else if (product) {
-            form.setFieldsValue(product.currentStrategy || {
-                reprisingMethod: 'competitor',
-                notifications: true,
-                isDefault: false,
-                productId: product.id,
-                sellerId: product.sellerId
-            });
+            if (product.currentStrategy) {
+                form.setFieldsValue(mapApiStrategyToFormValues(product.currentStrategy));
+                setActiveMethod(product.currentStrategy.reprising_method.toLowerCase());
+            } else {
+                form.setFieldsValue({
+                    reprisingMethod: 'competitor',
+                    notifications: true,
+                    isDefault: false,
+                    productId: product.id,
+                    sellerId: product.sellerId
+                });
+                setActiveMethod('competitor');
+            }
         }
     };
 
@@ -355,8 +587,9 @@ function StrategyPage() {
 
                         <Form.Item
                             label={<span style={{ color: 'white' }}>Базовый конкурент для расчета</span>}
-                            name="percentBase"
+                            name="competitorSource"
                             rules={[{ required: activeMethod === 'percent', message: 'Выберите базового конкурента' }]}
+                            initialValue="avg"
                         >
                             <Radio.Group>
                                 <Space direction="vertical">
@@ -370,15 +603,16 @@ function StrategyPage() {
 
                         <Form.Item
                             noStyle
-                            shouldUpdate={(prevValues, currentValues) => prevValues.percentBase !== currentValues.percentBase}
+                            shouldUpdate={(prevValues, currentValues) =>
+                                prevValues.competitorSource !== currentValues.competitorSource}
                         >
                             {({ getFieldValue }) =>
-                                getFieldValue('percentBase') === 'specific' ? (
+                                getFieldValue('competitorSource') === 'specific' ? (
                                     <Form.Item
                                         label={<span style={{ color: 'white' }}>Артикул товара конкурента</span>}
-                                        name="percentBaseArticle"
+                                        name="competitorArticle"
                                         rules={[{
-                                            required: getFieldValue('percentBase') === 'specific',
+                                            required: getFieldValue('competitorSource') === 'specific',
                                             message: 'Введите артикул товара конкурента'
                                         }]}
                                     >

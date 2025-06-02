@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+
   // uncode this for prod, then run in cmd: npm run build
   // output: 'export', // Генерирует статические файлы
   // eslint: {

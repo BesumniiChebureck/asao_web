@@ -101,6 +101,25 @@ export const ProductTable = ({ products = [] }: Props) => {
         console.log('Просмотр статистики для товара:', productId);
     };
 
+    const getCorrectionColor = (amount: number) => {
+        if (amount === 0) return '#f0f0f0';  // Серый - нет изменений
+        if (amount < 0) {
+            // Градации красного для отрицательных значений (понижение цены)
+            const intensity = Math.min(1, Math.abs(amount) / 100);
+            const red = 255;
+            const green = 200 - Math.floor(150 * intensity);
+            const blue = 200 - Math.floor(150 * intensity);
+            return `rgb(${red}, ${green}, ${blue})`;
+        } else {
+            // Градации зелёного для положительных значений (повышение цены)
+            const intensity = Math.min(1, amount / 100);
+            const red = 200 - Math.floor(150 * intensity);
+            const green = 255;
+            const blue = 200 - Math.floor(150 * intensity);
+            return `rgb(${red}, ${green}, ${blue})`;
+        }
+    };
+
     const handleGetForecast = (productId: number) => {
         console.log('Получение прогноза для товара:', productId);
     };
@@ -229,9 +248,26 @@ export const ProductTable = ({ products = [] }: Props) => {
         // Собираем все товары (и родительские и дочерние) в плоский список
         const flattenProducts = (items: Product[]): Product[] => {
             return items.reduce((acc: Product[], item) => {
-                acc.push(item);
+                // Добавляем родительский товар
+                acc.push({
+                    ...item,
+                    // Для родительского товара указываем isIncludedInCalculation как null
+                    isIncludedInCalculation: null,
+                    // correctAmount берем из родительского товара
+                    correctAmount: item.correctAmount || 0
+                });
+
+                // Добавляем дочерние товары (конкурентов)
                 if (item.children) {
-                    acc.push(...flattenProducts(item.children));
+                    item.children.forEach(child => {
+                        acc.push({
+                            ...child,
+                            // Для дочерних товаров берем их собственное значение isIncludedInCalculation
+                            isIncludedInCalculation: child.isIncludedInCalculation !== false,
+                            // Для дочерних товаров correctAmount не указываем (null или 0)
+                            correctAmount: 0
+                        });
+                    });
                 }
                 return acc;
             }, []);
@@ -242,10 +278,12 @@ export const ProductTable = ({ products = [] }: Props) => {
         const dataToExport = allProducts.map(item => ({
             'Артикул': item.id,
             'Название': item.name || '-',
-            'Базовая цена': item.base_price || '-',
-            'Цена со скидкой': item.discount_price || '-',
+            'Базовая цена (руб)': item.base_price || '-',
+            'Цена со скидкой (руб)': item.discount_price || '-',
+            'Учитывается в расчетах': item.isIncludedInCalculation == null ? '-' : item.isIncludedInCalculation ? 'Да' : 'Нет',
+            'Рекомендуемая коррекция (руб)': item.correctAmount || '-',
             'Рейтинг': item.star_count || '-',
-            'Отзывы': item.review_count || '-',
+            'Отзывы (шт)': item.review_count || '-',
             'Ссылка': item.link,
             'Принадлежность': item.children ? 'Собственный' : 'Конкурент'
         }));
@@ -254,7 +292,7 @@ export const ProductTable = ({ products = [] }: Props) => {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Товары");
 
-        // Московское время для формирование отчёта
+        // Московское время для формирования отчёта
         const mscDate = new Date();
         mscDate.setHours(mscDate.getHours() + 3);
         const fileName = `Список_товаров_${mscDate.toISOString().slice(0, 10)}`;
@@ -457,7 +495,7 @@ export const ProductTable = ({ products = [] }: Props) => {
             dataIndex: 'id',
             key: 'id',
             width: '12%',
-            sorter: (a, b) => a.id - b.id
+            sorter: (a, b) => a.id.localeCompare(b.id)
         },
         {
             title: 'Название',
@@ -482,9 +520,30 @@ export const ProductTable = ({ products = [] }: Props) => {
                         )
                         : null
                     }
-                    <span style={{ fontWeight: 'bold' }}>
-                        {record.discount_price} ₽
-                    </span>
+                    <Tooltip
+                        title={record.isIncludedInCalculation === false ?
+                            "Этот конкурент не учитывается в расчете корректировки из-за аномальной цены" :
+                            null}
+                        placement="top"
+                    >
+                        <span style={{
+                            fontWeight: 'bold',
+                            color: record.isIncludedInCalculation === false ? '#ff4d4f' : 'inherit',
+                            position: 'relative'
+                        }}>
+                            {record.discount_price} ₽
+                            {record.isIncludedInCalculation === false && (
+                                <InfoCircleOutlined
+                                    style={{
+                                        color: '#ff4d4f',
+                                        marginLeft: 4,
+                                        marginBottom: 6,
+                                        fontSize: 12
+                                    }}
+                                />
+                            )}
+                        </span>
+                    </Tooltip>
                 </Space>
             ),
             filters: [
@@ -492,13 +551,23 @@ export const ProductTable = ({ products = [] }: Props) => {
                 { text: '100-500 ₽', value: 500 },
                 { text: '500-1000 ₽', value: 1000 },
                 { text: 'Свыше 1000 ₽', value: 1001 },
+                { text: 'Учитывается в расчетах', value: 'included' },
+                { text: 'Не учитывается', value: 'excluded' },
             ],
             onFilter: (value, record) => {
-                const numValue = Number(value);
-                if (numValue === 100) return record.discount_price <= 100;
-                if (numValue === 500) return record.discount_price > 100 && record.discount_price <= 500;
-                if (numValue === 1000) return record.discount_price > 500 && record.discount_price <= 1000;
-                return record.discount_price > 1000;
+                // Фильтрация по диапазону цен
+                if (typeof value === 'number') {
+                    if (value === 100) return record.discount_price <= 100;
+                    if (value === 500) return record.discount_price > 100 && record.discount_price <= 500;
+                    if (value === 1000) return record.discount_price > 500 && record.discount_price <= 1000;
+                    return record.discount_price > 1000;
+                }
+
+                // Фильтрация по учету в расчетах
+                if (value === 'included') return record.isIncludedInCalculation !== false || record.isIncludedInCalculation === undefined || record.isIncludedInCalculation === null;
+                if (value === 'excluded') return record.isIncludedInCalculation === false || record.isIncludedInCalculation === undefined || record.isIncludedInCalculation === null;
+
+                return true;
             }
         },
         {
@@ -507,7 +576,7 @@ export const ProductTable = ({ products = [] }: Props) => {
             key: 'star_count',
             width: 120,
             sorter: (a, b) => a.star_count - b.star_count,
-            render: (rating) => `${rating} ★`,
+            render: (rating) => rating ? `${rating} ★` : `-`,
             filters: [
                 { text: '1 звезда', value: 1 },
                 { text: '2 звезды', value: 2 },
@@ -523,7 +592,57 @@ export const ProductTable = ({ products = [] }: Props) => {
             key: 'review_count',
             width: 120,
             sorter: (a, b) => a.review_count - b.review_count,
-            render: (reviews) => `${reviews} отз.`,
+            render: (reviews) => reviews ? `${reviews} отз.` : `-`,
+        },
+        {
+            title: 'Коррекция цены',
+            dataIndex: 'correctAmount',
+            key: 'correctAmount',
+            width: 150,
+            sorter: (a, b) => (a.correctAmount || 0) - (b.correctAmount || 0),
+            render: (amount: any) => {
+                if (amount === null || amount === undefined)
+                    return null
+
+                const color = getCorrectionColor(amount);
+                const textColor = 'white'; //amount === 0 ? '#000' : amount < 0 ? '#ff4d4f' : '#52c41a';
+                const icon = amount > 0 ? '↑' : amount < 0 ? '↓' : '→';
+                const tooltipText = amount > 0
+                    ? `Рекомендуется повысить цену на ${amount} руб.`
+                    : amount < 0
+                        ? `Рекомендуется понизить цену на ${Math.abs(amount)} руб.`
+                        : 'Коррекция цены не требуется';
+
+                return (
+                    <Tooltip title={tooltipText}>
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: color,
+                            borderRadius: '4px',
+                            padding: '4px 8px',
+                            fontWeight: 'bold',
+                            color: textColor,
+                            border: `1px solid ${amount === 0 ? '#d9d9d9' : textColor}`,
+                            cursor: 'help'
+                        }}>
+                            <span style={{ marginRight: 4 }}>{icon}</span>
+                            {amount !== 0 ? `${Math.abs(amount)} руб.` : 'Без изменений'}
+                        </div>
+                    </Tooltip>
+                );
+            },
+            filters: [
+                { text: 'Повышение цены', value: 'up' },
+                { text: 'Понижение цены', value: 'down' },
+                { text: 'Без изменений', value: 'none' },
+            ],
+            onFilter: (value, record) => {
+                if (value === 'up') return (record.correctAmount || 0) > 0;
+                if (value === 'down') return (record.correctAmount || 0) < 0;
+                return (record.correctAmount || 0) === 0;
+            }
         },
         {
             title: 'Действия',
