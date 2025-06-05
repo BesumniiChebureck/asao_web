@@ -1,22 +1,22 @@
 "use client";
 
-import { Button, Form, Input, Layout, message, ConfigProvider, Typography, InputNumber, Switch, Card, Divider, Radio, Space, Collapse, Tabs } from "antd";
+import { Button, Form, Input, Layout, message, ConfigProvider, Typography, InputNumber, Switch, Card, Divider, Radio, Space, Collapse, Popconfirm } from "antd";
 import '@ant-design/v5-patch-for-react-19';
 import { withAuth } from "../hocs/withAuth";
 import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 const { Title, Text } = Typography;
 
 interface Product {
-    id: number;
+    id: string;
     name: string;
     link: string;
     discount_price: number;
-    base_price: number;
-    star_count: number;
-    review_count: number;
-    children?: Product[];
+    base_price: number | null;
+    star_count: number | null;
+    review_count: number | null;
+    children?: Product[] | null;
     sellerId?: number;
     currentStrategy?: ApiStrategy;
 }
@@ -38,20 +38,21 @@ interface ApiStrategy {
     created_date: string;
     updated_date: string | null;
     deleted_date: string | null;
-    product_id: number | null;
+    product_id: string | null;
 }
 
 function StrategyPage() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const productId = searchParams.get('productId');
     const [product, setProduct] = useState<Product | null>(null);
     const [form] = Form.useForm();
     const [activeMethod, setActiveMethod] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState('default');
     const [defaultStrategy, setDefaultStrategy] = useState<ApiStrategy | null>(null);
     const [isLoadingStrategy, setIsLoadingStrategy] = useState(false);
     const [sellerId, setSellerId] = useState<number | null>(null);
+    const [isNewStrategy, setIsNewStrategy] = useState(false);
 
     const mapApiStrategyToFormValues = (strategy: ApiStrategy) => {
         return {
@@ -71,13 +72,12 @@ function StrategyPage() {
             notifications: strategy.notifications,
             createdAt: strategy.created_date,
             updatedAt: strategy.updated_date || new Date().toISOString(),
-            // поля для совместимости со старыми данными
             percentBase: strategy.competitor_source ? strategy.competitor_source.toLowerCase() as 'min' | 'avg' | 'max' | 'specific' : 'avg',
             percentBaseArticle: strategy.competitor_article
         };
     };
 
-    const mapFormValuesToApiStrategy = (values: any, isDefault: boolean, sellerId: number, productId?: number) => {
+    const mapFormValuesToApiStrategy = (values: any, isDefault: boolean, sellerId: number, productId?: string) => {
         const isCompetitorMethod = values.reprisingMethod === 'competitor';
         const isPercentMethod = values.reprisingMethod === 'percent';
 
@@ -123,10 +123,9 @@ function StrategyPage() {
 
     const loadProductStrategy = async () => {
         if (!IS_DAN_BACKEND_MODE) {
-            // Тестовые данные
             const generateChildren = (baseId: number, baseName: string) => {
                 return Array.from({ length: 5 }, (_, i) => ({
-                    id: baseId * 100 + i + 1,
+                    id: (baseId * 100 + i + 1).toString(),
                     name: `${baseName} (конкурент ${i + 1})`,
                     link: `https://example.com/product/${baseId * 100 + i + 1}`,
                     discount_price: Math.round(Math.random() * 1000),
@@ -140,7 +139,7 @@ function StrategyPage() {
 
             if (productId == '272261148') {
                 mockProduct = {
-                    id: 272261148,
+                    id: '272261148',
                     name: 'FIT Валик велюровый для краски 70 мм диаметр 15/23 мм ворс 4 мм бюгель 6 мм длина ручки 300 мм',
                     link: 'https://example.com/product/1',
                     discount_price: 79,
@@ -166,12 +165,12 @@ function StrategyPage() {
                         created_date: new Date().toISOString(),
                         updated_date: null,
                         deleted_date: null,
-                        product_id: 1
+                        product_id: '272261148'
                     }
                 };
             } else {
                 mockProduct = {
-                    id: 2,
+                    id: '2',
                     name: 'FIT Молоток 600 гр. кованый DIN 1041, деревянная рукоятка Профи',
                     link: 'https://example.com/product/1',
                     discount_price: 79,
@@ -197,13 +196,12 @@ function StrategyPage() {
                         created_date: new Date().toISOString(),
                         updated_date: null,
                         deleted_date: null,
-                        product_id: 2
+                        product_id: '2'
                     }
                 };
             }
 
             setProduct(mockProduct);
-            setActiveTab('product');
             return;
         }
 
@@ -214,7 +212,6 @@ function StrategyPage() {
 
             const data: ApiStrategy[] = await response.json();
 
-            // Загружаем информацию о продукте
             const productResponse = await fetch(`${ASAO_MAIN_API_HOST}products/${productId}/`);
             if (!productResponse.ok) throw new Error('Failed to fetch product');
 
@@ -229,14 +226,13 @@ function StrategyPage() {
                 star_count: productData.star_count,
                 review_count: productData.review_count,
                 sellerId: productData.seller_id,
-                currentStrategy: data.length > 0 ? data[0] : undefined // Устанавливаем стратегию, только если она есть
+                currentStrategy: data.length > 0 ? data[0] : undefined
             };
 
             setProduct(product);
-            setActiveTab('product');
 
-            // Если стратегии нет, показываем сообщение
             if (data.length === 0) {
+                setIsNewStrategy(true);
                 message.info('Для этого товара еще нет индивидуальной стратегии. Вы можете создать новую.');
             }
         } catch (error) {
@@ -251,7 +247,6 @@ function StrategyPage() {
         if (!sellerId) return;
 
         if (!IS_DAN_BACKEND_MODE) {
-            // Тестовые данные
             const mockStrategy: ApiStrategy = {
                 id: 0,
                 seller_id: sellerId,
@@ -282,7 +277,6 @@ function StrategyPage() {
 
             const data: ApiStrategy[] = await response.json();
             if (data.length === 0) {
-                // Если стратегии по умолчанию нет, создаем пустую
                 setDefaultStrategy({
                     id: 0,
                     seller_id: sellerId,
@@ -305,7 +299,6 @@ function StrategyPage() {
                 return;
             }
 
-            // Находим стратегию по умолчанию (is_default = true)
             const strategy = data.find(s => s.is_default) || data[0];
             setDefaultStrategy(strategy);
         } catch (error) {
@@ -322,7 +315,6 @@ function StrategyPage() {
                 form.setFieldsValue(mapApiStrategyToFormValues(product.currentStrategy));
                 setActiveMethod(product.currentStrategy.reprising_method.toLowerCase());
             } else {
-                // Устанавливаем значения по умолчанию для новой стратегии
                 form.setFieldsValue({
                     reprisingMethod: 'competitor',
                     notifications: true,
@@ -353,7 +345,6 @@ function StrategyPage() {
                     product?.id
                 );
 
-                // Определяем метод и URL в зависимости от существования стратегии
                 const isExistingStrategy = !!currentStrategy?.id;
                 const method = isExistingStrategy ? 'PUT' : 'POST';
                 const url = isExistingStrategy
@@ -373,6 +364,7 @@ function StrategyPage() {
 
                 const savedStrategy = await response.json();
                 message.success('Стратегия успешно сохранена');
+                router.push("/productList");
 
                 if (product) {
                     setProduct({
@@ -383,7 +375,6 @@ function StrategyPage() {
                     setDefaultStrategy(savedStrategy);
                 }
             } else {
-                // Тестовый режим - просто логируем данные
                 console.log('Saving strategy:', values);
                 message.success('Стратегия успешно сохранена (тестовый режим)');
 
@@ -424,7 +415,44 @@ function StrategyPage() {
         }
     };
 
-    // Остальной код остается без изменений
+    const handleDelete = async () => {
+        try {
+            setIsLoading(true);
+            const currentStrategy = product?.currentStrategy || defaultStrategy;
+            const isExistingStrategy = !!currentStrategy?.id;
+
+            if (!isExistingStrategy) {
+                message.info('Невозможно удалить несуществующую стратегию.');
+            }
+
+            if (IS_DAN_BACKEND_MODE) {
+                const method = 'DELETE';
+                const url = `${ASAO_MAIN_API_HOST}strategies/${currentStrategy?.id}/`;
+
+                const response = await fetch(url, {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to delete strategy');
+
+                const savedStrategy = await response.json();
+                message.success('Стратегия успешно удалена');
+                router.push("/productList");
+            } else {
+                message.success('Стратегия успешно удалена (тестовый режим)');
+            }
+        } catch (error) {
+            console.error('Delete failed:', error);
+            message.error('Непридвиденная ошибка! Пожалуйста, повторите попытку позже.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleMethodChange = (e: any) => {
         const method = e.target.value;
         updateMethodSelection(method);
@@ -440,30 +468,6 @@ function StrategyPage() {
         if (method !== 'fixed') form.setFieldsValue({ fixedPrice: undefined });
         if (method !== 'competitor') form.setFieldsValue({ competitorOffset: undefined });
         if (method !== 'percent') form.setFieldsValue({ percentValue: undefined, percentDirection: 'above' });
-    };
-
-    const handleTabChange = (key: string) => {
-        setActiveTab(key);
-        form.resetFields();
-        setActiveMethod(null);
-
-        if (key === 'default' && sellerId) {
-            loadDefaultStrategy();
-        } else if (product) {
-            if (product.currentStrategy) {
-                form.setFieldsValue(mapApiStrategyToFormValues(product.currentStrategy));
-                setActiveMethod(product.currentStrategy.reprising_method.toLowerCase());
-            } else {
-                form.setFieldsValue({
-                    reprisingMethod: 'competitor',
-                    notifications: true,
-                    isDefault: false,
-                    productId: product.id,
-                    sellerId: product.sellerId
-                });
-                setActiveMethod('competitor');
-            }
-        }
     };
 
     const getCollapseItems = () => {
@@ -631,7 +635,7 @@ function StrategyPage() {
 
     const renderFormContent = () => (
         <>
-            {activeTab === 'product' && product && (
+            {product && (
                 <Form.Item label={<span style={{ color: 'white' }}>Товар</span>}>
                     <Input readOnly value={product.name} />
                 </Form.Item>
@@ -645,9 +649,8 @@ function StrategyPage() {
             >
                 <Radio.Group onChange={handleMethodChange} style={{ width: '100%' }}>
                     <Space direction="vertical" style={{ width: '100%' }}>
-                        {(activeTab === 'default' && product) || !product
-                            ? null
-                            : <Card
+                        {product && (
+                            <Card
                                 onClick={() => handleCardClick('fixed')}
                                 style={{
                                     cursor: 'pointer',
@@ -661,7 +664,8 @@ function StrategyPage() {
                                         Цена остается постоянной и не зависит от конкурентов
                                     </Text>
                                 </Radio>
-                            </Card>}
+                            </Card>
+                        )}
 
                         <Card
                             onClick={() => handleCardClick('competitor')}
@@ -760,21 +764,36 @@ function StrategyPage() {
                     Сохранить стратегию
                 </Button>
             </Form.Item>
+
+            {
+                isNewStrategy
+                    ? null
+                    : (
+                        <Form.Item>
+                            <Popconfirm
+                                title="Удаление стратегии"
+                                description="Вы уверены, что хотите удалить стратегию?"
+                                onConfirm={handleDelete}
+                                okText="Да"
+                                cancelText="Нет"
+                            >
+                                <Button
+                                    type="primary"
+                                    danger
+                                    block
+                                    size="large"
+                                    loading={isLoading}
+                                    style={{ height: 48, fontSize: 16 }}
+                                >
+                                    Удалить стратегию
+                                </Button>
+                            </Popconfirm>
+                        </Form.Item>
+                    )
+            }
+
         </Form>
     );
-
-    const tabItems = useMemo(() => [
-        {
-            key: 'product',
-            label: 'Для этого товара',
-            children: renderForm()
-        },
-        {
-            key: 'default',
-            label: 'Для всех товаров по умолчанию',
-            children: renderForm()
-        }
-    ], [product, form, activeMethod]);
 
     const theme = {
         components: {
@@ -825,12 +844,6 @@ function StrategyPage() {
                 //colorBorder: '#434343',
                 colorBgContainer: 'transparent',
                 borderRadius: 8,
-            },
-            Tabs: {
-                colorText: 'white',
-                colorTextDisabled: 'rgba(255,255,255,0.3)',
-                //colorPrimary: '#00b96b',
-                //inkBarColor: '#00b96b',
             }
         },
         token: {
@@ -867,14 +880,7 @@ function StrategyPage() {
                             border: '1px solid #434343'
                         }}
                     >
-                        {product ? (
-                            <Tabs
-                                activeKey={activeTab}
-                                onChange={handleTabChange}
-                                items={tabItems}
-                                style={{ color: 'white' }}
-                            />
-                        ) : renderForm()}
+                        {renderForm()}
                     </Card>
                 </div>
             </Layout>

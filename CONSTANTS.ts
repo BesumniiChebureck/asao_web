@@ -1,6 +1,6 @@
 globalThis.IS_DEBUG_MODE = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true';
 globalThis.IS_DAN_BACKEND_MODE = process.env.NEXT_PUBLIC_DAN_BACKEND_MODE === 'true';
-globalThis.ASAO_MAIN_API_HOST = 'http://127.0.0.1:8004/';
+globalThis.ASAO_MAIN_API_HOST = 'http://127.0.0.1:8005/';
 
 
 // Определяем режим

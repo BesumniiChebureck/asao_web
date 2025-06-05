@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx';
 import '@ant-design/v5-patch-for-react-19';
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useWindowSize } from "../hooks/useWindowsSize";
 import ky from "ky";
 
 interface Props {
@@ -194,7 +195,11 @@ export const ProductTable = ({ products = [] }: Props) => {
                             <Button
                                 type="link"
                                 size="small"
-                                onClick={() => message.destroy()}
+                                onClick={() => {
+                                    message.destroy();
+                                    // Обновление страницы для обновления списка
+                                    window.location.reload();
+                                }}
                                 style={{ padding: 0, height: 'auto' }}
                             >
                                 Закрыть
@@ -236,7 +241,7 @@ export const ProductTable = ({ products = [] }: Props) => {
 
             message.error({
                 content: 'Произошла ошибка при добавлении товара. Пожалуйста, попробуйте позже.',
-                duration: 0,
+                duration: 20,
                 key: requestId
             });
         }
@@ -344,7 +349,11 @@ export const ProductTable = ({ products = [] }: Props) => {
     };
 
     const ExpandableTextLink = ({ text, link }: { text: string; link: string }) => {
-        const MAX_LENGTH = 70;
+        const { width } = useWindowSize();
+
+        // Динамически вычисляем MAX_LENGTH в зависимости от ширины экрана
+        // Чем больше число в Math.floor(width / 40) (40), тем меньше будет MAX_LENGTH при той же ширине экрана.
+        const MAX_LENGTH = Math.min(70, Math.max(30, Math.floor(width / 40)));
         const isLongText = text?.length > MAX_LENGTH;
         const displayedText = isLongText ? `${text.substring(0, MAX_LENGTH)}...` : text;
         const [modalOpen, setModalOpen] = useState(false);
@@ -428,13 +437,13 @@ export const ProductTable = ({ products = [] }: Props) => {
             // Показываем подтверждающий диалог перед удалением
             Modal.confirm({
                 title: 'Удаление товара',
-                content: `Вы уверены, что хотите удалить товар "${product.name}" (артикул: ${product.id})?`,
+                content: `Вы уверены, что хотите безвозвратно удалить товар "${product.name}" (артикул: ${product.id})?`,
                 okText: 'Удалить',
                 cancelText: 'Отмена',
                 okButtonProps: { danger: true },
                 async onOk() {
                     try {
-                        const response = await ky.delete(`${ASAO_MAIN_API_HOST}products/${product.id}`, {
+                        const response = await ky.delete(`${ASAO_MAIN_API_HOST}products/full/${product.id}`, {
                             searchParams: { seller_id: sellerId },
                             headers: {
                                 'accept': 'application/json'
@@ -443,22 +452,8 @@ export const ProductTable = ({ products = [] }: Props) => {
 
                         if (response.ok) {
                             message.success('Товар успешно удален');
-
-                            // Обновляем данные после удаления
-                            try {
-                                const response = await ky.get(`${ASAO_MAIN_API_HOST}products/?seller_id=${sellerId}&skip=0&limit=1000`);
-                                const data: any = await response.json();
-
-                                if (data.message) {
-                                    message.error(data.message);
-                                } else {
-                                    console.log("API data:", data);
-                                    products = data;
-                                }
-                            } catch (error) {
-                                console.error('API error:', error);
-                                message.error("Непредвиденная ошибка. Повторите попытку или попробуйте выполнить запрос позже.");
-                            }
+                            // Обновление страницы для обновления списка
+                            window.location.reload();
                         } else {
                             throw new Error('Не удалось удалить товар');
                         }
@@ -494,14 +489,14 @@ export const ProductTable = ({ products = [] }: Props) => {
             title: 'Артикул',
             dataIndex: 'id',
             key: 'id',
-            width: '12%',
+            width: '13%',
             sorter: (a, b) => a.id.localeCompare(b.id)
         },
         {
             title: 'Название',
             dataIndex: 'name',
             key: 'name',
-            width: 250,
+            width: '30%',
             sorter: (a, b) => a.name.localeCompare(b.name),
             render: (text, record) => <ExpandableTextLink text={text} link={record.link} />
         },
@@ -671,7 +666,7 @@ export const ProductTable = ({ products = [] }: Props) => {
                     { type: 'divider' },
                     {
                         key: 'strategy',
-                        label: 'Стратегия авторегулирования цен',
+                        label: 'Стратегия продаж',
                         icon: <SettingOutlined />,
                         onClick: (e) => {
                             e.domEvent.stopPropagation();

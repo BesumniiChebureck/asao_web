@@ -160,7 +160,7 @@ export default function RootLayout({
     },
     {
       key: "strategy",
-      label: <Link href={"/strategy"} style={{ color: 'white' }}>Стратегия регулирования цен</Link>,
+      label: <Link href={"/strategy"} style={{ color: 'white' }}>Стратегия продаж</Link>,
       icon: <SlidersOutlined />
     },
     {
